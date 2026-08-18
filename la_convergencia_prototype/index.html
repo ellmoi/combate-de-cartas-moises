@@ -1,0 +1,355 @@
+﻿<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>La Convergencia — Prototipo visual</title>
+  <meta name="description" content="Prototipo visual estático de La Convergencia.">
+  <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+  <div id="app-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  <!-- Navegación principal del juego -->
+  <header class="topbar"><a class="brand" href="#lobby" data-screen-target="lobby"><i></i><span><b>LA CONVERGENCIA</b><small>PROTOCOLO
+          CENTROAMÉRICA</small></span></a>
+    <nav id="primary-navigation" aria-label="Navegación principal"><a href="#lobby" data-screen-target="lobby">JUGAR</a><a href="#cartas" data-screen-target="characters">CARTAS</a><a href="#equipo" data-screen-target="team">EQUIPO</a><a href="#modos" data-screen-target="modes">MODOS</a><a
+        href="#arenas" data-screen-target="arenas">ARENAS</a><a href="#archivo" data-screen-target="archive">ARCHIVO</a></nav>
+    <p><i></i> LOCAL · VS MÁQUINA</p>
+  </header>
+  <!-- Cada sección representa una pantalla que JavaScript muestra u oculta. -->
+  <main>
+    <section class="lobby screen" id="lobby">
+      <div class="atmosphere"></div>
+      <div class="hero-brand"><small>CICLO 01 · CENTROAMÉRICA</small>
+        <h1>LA <em>CONVERGENCIA</em></h1>
+        <p>EL PODER NO DETERMINA AL GANADOR.</p><button type="button" data-action="resume-setup">INICIAR CONVERGENCIA →</button><button class="tutorial-open-button" type="button" data-action="open-tutorial">CÓMO JUGAR</button>
+      </div>
+      <div class="grid-floor"></div>
+
+      <div class="featured-character" id="lobby-featured-character">
+        <div></div><img id="lobby-character-image" src="assets/reference/maya.jpg" alt="Maya"><span
+          id="lobby-character-name">INICIAL · MAYA</span>
+      </div>
+      <div class="cube"><i></i><i></i><i></i></div>
+      <aside class="setup">
+        <article>
+          <header><small>MODO</small><b id="lobby-mode-status">PRINCIPAL</b></header>
+          <h2 id="lobby-mode-name">GUERRA DE SELECCIÓN</h2>
+          <p id="lobby-mode-description">Jugador vs Máquina · Equipo de cinco · Una carta activa · Cuatro reservas ·
+            Cambios permitidos.</p><a href="#modos" data-screen-target="modes">CAMBIAR
+            MODO</a>
+        </article>
+        <article>
+          <header><small>ARENA</small><b id="lobby-arena-status">01 / 06</b></header>
+          <h3 id="lobby-arena-name">DISTRITO UMBRAL</h3>
+          <p id="lobby-arena-description">La ciudad continúa despierta bajo una anomalía apenas visible.</p><a
+            href="#arenas" data-screen-target="arenas">CAMBIAR ARENA</a>
+        </article>
+      </aside>
+      <div class="team-dock">
+        <header><span><small>EQUIPO ACTUAL</small><b id="lobby-team-counter">5 / 5</b></span><a href="#equipo" data-screen-target="team">EDITAR
+            EQUIPO</a></header>
+        <div id="lobby-team-slots">
+          <article class="active"><img src="assets/reference/maya.jpg"><b>01</b><small>ACTIVA</small></article>
+          <article><img src="assets/reference/valeria.jpg"><b>02</b><small>RESERVA</small></article>
+          <article><img src="assets/reference/noah.jpg"><b>03</b><small>RESERVA</small></article>
+          <article><img src="assets/reference/axel.jpg"><b>04</b><small>RESERVA</small></article>
+          <article><span>IS</span><b>05</b><small>RESERVA</small></article>
+        </div>
+      </div>
+      <div class="play">
+        <p id="lobby-team-status">✓ EQUIPO 5/5 &nbsp; ✓ MODO &nbsp; ✓ ARENA</p><button id="start-convergence-button"
+          type="button">JUGAR <b>→</b></button><small>COMBATE DE SELECCIÓN · VS
+          MÁQUINA</small>
+      </div>
+    </section>
+
+    <section class="section screen" id="modos">
+      <nav class="setup-progress" aria-label="Progreso de preparación" data-setup-progress></nav>
+      <header class="title">
+        <div><small>PROTOCOLOS DE PARTIDA</small>
+          <h2>MODOS DE JUEGO</h2>
+        </div><b>01 / 04</b>
+      </header>
+      <div class="modes" id="game-modes">
+        <article class="chosen"><b>01</b>
+          <div><small>MODO UNIVERSITARIO · PRINCIPAL</small>
+            <h3>COMBATE DE SELECCIÓN</h3>
+            <p>Jugador vs Máquina · Equipo de cinco · Una carta activa · Cuatro reservas · Cambios permitidos.</p>
+          </div><span>SELECCIONADO</span>
+        </article>
+        <article><b>02</b>
+          <div><small>MODO ALTERNATIVO</small>
+            <h3>SUPERVIVENCIA</h3>
+            <p>REGLAS: [POR DEFINIR]</p>
+          </div><span>EN DISEÑO</span>
+        </article>
+        <article><b>03</b>
+          <div><small>MODO ESTRATÉGICO</small>
+            <h3>DUELO DE CONVICCIÓN</h3>
+            <p>REGLAS: [POR DEFINIR]</p>
+          </div><span>EN DISEÑO</span>
+        </article>
+        <article><b>04</b>
+          <div><small>PROTOCOLO EXPERIMENTAL</small>
+            <h3>ANOMALÍA</h3>
+            <p>REGLAS: [POR DEFINIR]</p>
+          </div><span>EN DISEÑO</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="section screen" id="cartas">
+      <nav class="setup-progress" aria-label="Progreso de preparación" data-setup-progress></nav>
+      <header class="title">
+        <div><small>COLECCIÓN INICIAL</small>
+          <h2>8 PARTICIPANTES</h2>
+          <p>Personas contemporáneas marcadas por una energía que todavía no comprendemos.</p>
+        </div><b>08 / 08</b>
+      </header>
+      <div class="card-grid" id="character-grid">
+        <article class="card">
+          <div class="art"><img src="assets/reference/luna.jpg" alt="Luna"><em>MARCA · ESTABLE</em></div><small>01 ·
+            MANIPULADOR</small>
+          <h3>LUNA</h3>
+          <p>Dreamachine</p>
+          <footer>ECOS MENTALES · GUATEMALA</footer>
+        </article>
+        <article class="card">
+          <div class="art"><img src="assets/reference/axel.jpg" alt="Axel"><em>MÁSCARA · NO OBTENIDA</em></div><small>02
+            · MANIPULACIÓN</small>
+          <h3>AXEL</h3>
+          <p>Vector</p>
+          <footer>MENSAJERO · EL SALVADOR</footer>
+        </article>
+        <article class="card picked">
+          <div class="art"><img src="assets/reference/maya.jpg" alt="Maya"><em>MARCA · PALMA IZQUIERDA</em></div>
+          <small>03 · FIJACIÓN</small>
+          <h3>MAYA</h3>
+          <p>Ancla</p>
+          <footer>ESTUDIANTE · GUATEMALA</footer>
+        </article>
+        <article class="card">
+          <div class="art"><img src="assets/reference/valeria.jpg" alt="Valeria"><em>MARCA · MUÑECA DERECHA</em></div>
+          <small>04 · ALTERACIÓN</small>
+          <h3>VALERIA</h3>
+          <p>Fricción</p>
+          <footer>MECÁNICA · PANAMÁ</footer>
+        </article>
+        <article class="card">
+          <div class="art"><img src="assets/reference/noah.jpg" alt="Noah"><em>MARCA · CENTRO DEL PECHO</em></div>
+          <small>05 · ACUMULACIÓN</small>
+          <h3>NOAH</h3>
+          <p>Depósito</p>
+          <footer>COCINERO · HONDURAS</footer>
+        </article>
+        <article class="card">
+          <div class="art"><img src="assets/reference/sara.jpg" alt="Sara"><em>MARCA · MANO IZQUIERDA</em></div>
+          <small>06 · ENLACE</small>
+          <h3>SARA</h3>
+          <p>Costura</p>
+          <footer>COSTURERA · EL SALVADOR</footer>
+        </article>
+        <article class="card">
+          <div class="art"><img src="assets/reference/elias.jpg" alt="Elías"><em>MARCA · ÍNDICE DERECHO</em></div>
+          <small>07 · CONDICIÓN</small>
+          <h3>ELÍAS</h3>
+          <p>Umbral</p>
+          <footer>CERRAJERO · NICARAGUA</footer>
+        </article>
+        <article class="card">
+          <div class="art p4"><b>CA</b><em>IMAGEN · PENDIENTE</em></div><small>08 · CLASE [PENDIENTE]</small>
+          <h3>CAMILA</h3>
+          <p>Préstamo</p>
+          <footer>ARCHIVO INCOMPLETO</footer>
+        </article>
+      </div>
+      <div class="setup-next-action"><p id="character-selection-status">0 / 5</p><button id="continue-characters-button" type="button" disabled aria-disabled="true">CONTINUAR A INICIAL →</button></div>
+    </section>
+
+    <section class="section screen" id="ficha">
+      <header class="title">
+        <div><button class="screen-back" type="button" data-screen-target="characters">← VOLVER A CARTAS</button><small id="detail-file-number">EXPEDIENTE 01</small>
+          <h2>FICHA COMPLETA</h2>
+        </div><b id="detail-conviction">CONVICCIÓN · ESTABLE</b>
+      </header>
+      <div class="sheet" id="character-detail">
+        <div class="sheet-portrait"><img src="assets/reference/maya.jpg"><span>MAYA</span></div>
+        <article><small>IDENTIDAD</small>
+          <h3>MAYA</h3>
+          <p>22 años<br>Guatemala<br>Estudiante de arquitectura / Dibujante técnica</p><small>COMBATE</small>
+          <p>Clase: Fijación<br>Capacidad: Ancla</p>
+        </article>
+        <article class="stats"><small>ESTADÍSTICAS</small>
+          <p>Salud <i style="--v:60%"></i> 60</p>
+          <p>Energía <i style="--v:65%"></i> 65</p>
+          <p>Resistencia <i style="--v:66%"></i> 66</p>
+          <p>Agilidad <i style="--v:68%"></i> 68</p>
+          <p>Técnica <i style="--v:58%"></i> 58</p>
+          <p>Control <i style="--v:72%"></i> 72</p>
+          <p>Eficiencia <i style="--v:64%"></i> 64</p>
+          <p>Potencia <i style="--v:46%"></i> 46</p>
+          <p>Percepción <i style="--v:76%"></i> 76</p>
+        </article>
+        <article><small>HABILIDADES</small>
+          <p>01 · Anclaje<br>02 · Fijación<br>03 · Pivote<br>04 · Amarre<br>∞ · Lectura espacial</p>
+          <small>ARCHIVO</small>
+          <p>Historia: [PENDIENTE]<br>Deseo: [DESCONOCIDO]<br>Conexiones: [ARCHIVO INCOMPLETO]</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section screen" id="equipo">
+      <nav class="setup-progress" aria-label="Progreso de preparación" data-setup-progress></nav>
+      <header class="title">
+        <div><small>CONFIGURACIÓN PREVIA</small>
+          <h2>TU EQUIPO</h2>
+          <p>Una carta inicia. Cuatro permanecen en reserva.</p>
+        </div><b id="team-counter">5 / 5</b>
+      </header>
+      <div class="lineup" id="team-slots">
+        <article class="initial"><img src="assets/reference/maya.jpg"><small>01</small><b>MAYA</b><span>INICIAL</span>
+        </article>
+        <article><img src="assets/reference/valeria.jpg"><small>02</small><b>VALERIA</b><span>RESERVA</span></article>
+        <article><img src="assets/reference/noah.jpg"><small>03</small><b>NOAH</b><span>RESERVA</span></article>
+        <article><img src="assets/reference/axel.jpg"><small>04</small><b>AXEL</b><span>RESERVA</span></article>
+        <article><img src="assets/reference/sara.jpg"><small>05</small><b>SARA</b><span>RESERVA</span></article>
+      </div>
+      <div class="confirm" id="team-confirmation-panel">
+        <p id="confirmation-status"><b>8</b> PARTICIPANTES DISPONIBLES</p><button id="confirm-team-button"
+          type="button">CONFIRMAR EQUIPO</button><button id="reset-player-setup-button" class="secondary-action" type="button">RESTABLECER
+          CONFIGURACIÓN</button>
+      </div>
+    </section>
+
+    <section class="section screen" id="arenas">
+      <nav class="setup-progress" aria-label="Progreso de preparación" data-setup-progress></nav>
+      <header class="title">
+        <div><small>TERRITORIOS DE COMBATE</small>
+          <h2>6 ARENAS</h2>
+        </div><b>01 / 06</b>
+      </header>
+      <div class="arena-grid" id="arena-grid">
+        <article class="city"><small>01 · SELECCIONADA</small>
+          <h3>CIUDAD</h3><b>Distrito Umbral</b>
+          <p>Arquitectura contemporánea bajo una anomalía silenciosa.</p>
+        </article>
+        <article class="jungle"><small>02</small>
+          <h3>SELVA</h3><b>Reserva Latente</b>
+          <p>Naturaleza activa y rastros antiguos entre la vegetación.</p>
+        </article>
+        <article class="coast"><small>03</small>
+          <h3>COSTA</h3><b>Franja del Pacífico</b>
+          <p>Océano, roca volcánica, viento y estructuras portuarias.</p>
+        </article>
+        <article class="ruins"><small>04</small>
+          <h3>RUINAS</h3><b>Observatorio Quebrado</b>
+          <p>Arquitectura ficticia inspirada en la memoria regional.</p>
+        </article>
+        <article class="industry"><small>05</small>
+          <h3>COMPLEJO INDUSTRIAL</h3><b>Sector Ferrita</b>
+          <p>Almacenes, maquinaria y metal oscurecido por el tiempo.</p>
+        </article>
+        <article class="zero"><small>06</small>
+          <h3>ZONA CERO</h3><b>Epicentro</b>
+          <p>El mundo real se deforma alrededor del primer Cubo.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section versus screen" id="versus-section"><button class="screen-back" type="button" data-screen-target="lobby">← VOLVER A CONFIGURACIÓN</button><small>COMBATE DE SELECCIÓN · DISTRITO UMBRAL</small>
+      <div>
+        <article><small>JUGADOR</small>
+          <h2>MAYA</h2><img src="assets/reference/maya.jpg">
+          <p>RESERVA　02　03　04　05</p>
+        </article><strong>1 <b>VS</b> 1<small>4 EN RESERVA POR EQUIPO</small></strong>
+        <article><small>MÁQUINA</small>
+          <h2>VALERIA</h2><img src="assets/reference/valeria.jpg">
+          <p>RESERVA　06　10　11　14</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="battle screen" id="battle-preview">
+      <div class="battle-scene"></div>
+      <header>
+        <article><small>JUGADOR · ACTIVA</small>
+          <h3>MAYA</h3>
+          <p>♥ SALUD <i></i></p>
+          <p>◈ ENERGÍA <i></i></p><b>CONVICCIÓN · ESTABLE</b>
+        </article><strong>1 <span>VS</span> 1<small>COMBATE DE SELECCIÓN</small></strong>
+        <article><small>MÁQUINA · ACTIVA</small>
+          <h3>VALERIA</h3>
+          <p>♥ SALUD <i></i></p>
+          <p>◈ ENERGÍA <i></i></p><b>CONVICCIÓN · ESTABLE</b>
+        </article>
+      </header>
+      <div class="fighters"><img src="assets/reference/maya.jpg">
+        <div></div><img src="assets/reference/valeria.jpg">
+      </div>
+      <footer>
+        <p>ACTIVA <b>01</b>　 RESERVA <span>02　03　04　05</span></p>
+        <div><button>HABILIDAD 1<small>120 ENE</small></button><button>HABILIDAD 2<small>180
+              ENE</small></button><button>HABILIDAD ESPECIAL<small>350
+              ENE</small></button><button>DEFENDER</button><button>ANALIZAR</button><button>CAMBIAR</button></div>
+        <p><span>06　10　11　14</span> RESERVA　<b>02</b> ACTIVA</p>
+      </footer>
+    </section>
+
+    <section class="section result screen" id="results-section"><small>REGISTRO DE PARTIDA · PROTOTIPO VISUAL</small>
+      <h2>RESULTADO</h2>
+      <div class="winner">
+        <article><small>GANADORA</small>
+          <h3>MAYA</h3>
+          <p>CONVICCIÓN FINAL · <b>ESTABLE</b></p>
+        </article><img src="assets/reference/maya.jpg">
+      </div>
+      <div class="result-data">
+        <p><small>MODO</small><b>Combate de Selección</b></p>
+        <p><small>ARENA</small><b>Distrito Umbral</b></p>
+        <p><small>UTILIZADOS</small><b>01</b></p>
+        <p><small>INCAPACITADOS</small><b>00</b></p>
+        <p><small>EQUIPO</small><b>5 / 5</b></p>
+      </div>
+      <footer><button>REPETIR</button><button>CAMBIAR EQUIPO</button><button>VOLVER AL LOBBY</button></footer>
+    </section>
+
+    <section class="section screen" id="archivo">
+      <header class="title">
+        <div><small>REGISTROS INCOMPLETOS</small>
+          <h2>ARCHIVO</h2>
+        </div><b>ACCESO PARCIAL</b>
+      </header>
+      <div class="archive" id="archive-content">
+        <article><small>OBJETO 00</small>
+          <h3>EL CUBO</h3>
+          <p>Origen desconocido. Traduce información del torneo.</p><b>[ARCHIVO INCOMPLETO]</b>
+        </article>
+        <article><small>EVENTO 01</small>
+          <h3>LA CONVERGENCIA</h3>
+          <p>Una recurrencia que conecta marcas, máscaras y territorios.</p><b>[HISTORIA PENDIENTE]</b>
+        </article>
+        <article><small>REGIÓN 04</small>
+          <h3>CENTROAMÉRICA</h3>
+          <p>Veinte participantes registrados para el protocolo.</p><b>[CONEXIONES DESCONOCIDAS]</b>
+        </article>
+      </div>
+    </section>
+
+    <dialog id="game-tutorial" class="game-tutorial" aria-labelledby="tutorial-title">
+      <div class="tutorial-heading"><small>GUÍA RÁPIDA</small><h2 id="tutorial-title">CÓMO JUGAR</h2><button type="button" data-action="close-tutorial" aria-label="Cerrar tutorial">×</button></div>
+      <section><h3>1 · PREPARA LA PARTIDA</h3><ol><li>Elige Combate de Selección.</li><li>Forma un equipo de cinco personajes.</li><li>Elige quién comienza y confirma el equipo.</li><li>Selecciona una arena y vuelve al lobby.</li></ol></section>
+      <section><h3>2 · COMBATE</h3><ul><li><b>ATAQUE BÁSICO:</b> causa daño y termina tu turno.</li><li><b>HABILIDADES:</b> consumen energía cuando su mecánica está disponible.</li><li><b>DEFENDER:</b> reduce el siguiente impacto.</li><li><b>ANALIZAR:</b> revela salud y energía del rival.</li><li><b>CAMBIAR:</b> sustituye al personaje activo por una reserva disponible.</li></ul></section>
+      <section><h3>3 · OBJETIVO</h3><p>Derrota a los cinco personajes de la máquina. Si tu personaje activo cae, elige un reemplazo para continuar.</p></section>
+      <button class="tutorial-close-button" type="button" data-action="close-tutorial">ENTENDIDO</button>
+    </dialog>
+  </main>
+  <footer class="site-footer"><span>LA CONVERGENCIA · PROTOTIPO VISUAL UNIVERSITARIO</span><span>HTML + CSS + JAVASCRIPT
+      VANILLA</span></footer>
+  <script type="module" src="./app.js"></script>
+</body>
+
+</html>
+

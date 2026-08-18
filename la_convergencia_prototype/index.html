@@ -15,8 +15,8 @@
   <header class="topbar"><a class="brand" href="#lobby" data-screen-target="lobby"><i></i><span><b>LA CONVERGENCIA</b><small>PROTOCOLO
           CENTROAMÉRICA</small></span></a>
     <nav id="primary-navigation" aria-label="Navegación principal"><a href="#lobby" data-screen-target="lobby">JUGAR</a><a href="#cartas" data-screen-target="characters">CARTAS</a><a href="#equipo" data-screen-target="team">EQUIPO</a><a href="#modos" data-screen-target="modes">MODOS</a><a
-        href="#arenas" data-screen-target="arenas">ARENAS</a><a href="#archivo" data-screen-target="archive">ARCHIVO</a></nav>
-    <button id="audio-toggle" class="audio-toggle" type="button" aria-pressed="false" title="Los archivos de audio todavía no están disponibles">AUDIO · NO DISPONIBLE</button>
+        href="#arenas" data-screen-target="arenas">ARENAS</a><a href="#archivo" data-screen-target="archive">HISTORIAL</a></nav>
+    <div class="player-profile"><small>JUGADOR</small><b id="player-name-display">SIN IDENTIFICAR</b><button type="button" data-action="change-player">CAMBIAR</button></div><button id="audio-toggle" class="audio-toggle" type="button" aria-pressed="false" title="Activar o silenciar música y efectos">SONIDO ON</button>
   </header>
   <!-- Cada sección representa una pantalla que JavaScript muestra u oculta. -->
   <main>
@@ -323,7 +323,7 @@
     <section class="section screen" id="archivo">
       <header class="title">
         <div><small>REGISTROS INCOMPLETOS</small>
-          <h2>ARCHIVO</h2>
+          <h2>HISTORIAL DE BATALLAS</h2>
         </div><b>ACCESO PARCIAL</b>
       </header>
       <div class="archive" id="archive-content">
@@ -351,6 +351,17 @@
       <button class="tutorial-close-button" type="button" data-action="close-tutorial">ENTENDIDO</button>
     </dialog>
   </main>
+  <!-- Identificación del jugador -->
+  <dialog id="player-dialog" class="player-dialog" aria-labelledby="player-dialog-title">
+    <form id="player-form" method="dialog" novalidate>
+      <small>PROTOCOLO DE ACCESO</small>
+      <h2 id="player-dialog-title">IDENTIFÍCATE, CONVERGENTE</h2>
+      <label for="player-name-input">NOMBRE</label>
+      <input id="player-name-input" name="playerName" type="text" minlength="2" maxlength="20" autocomplete="nickname" required>
+      <p id="player-name-error" class="player-name-error" role="alert"></p>
+      <div><button type="button" data-action="cancel-player" hidden>CANCELAR</button><button type="submit">CONTINUAR</button></div>
+    </form>
+  </dialog>
   <dialog id="battle-exit-dialog" class="battle-exit-dialog" aria-labelledby="battle-exit-title" aria-describedby="battle-exit-description">
     <div class="battle-exit-panel">
       <span class="battle-exit-symbol" aria-hidden="true">!</span>

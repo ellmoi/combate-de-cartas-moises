@@ -21,7 +21,9 @@ const MAX_MATCH_HISTORY = 50;
 const MAX_BATTLE_LOG_ENTRIES = 40;
 const STORAGE_KEYS = {
   matchHistory: "laConvergencia.matchHistory",
-  playerSetup: "laConvergencia.playerSetup"
+  playerSetup: "laConvergencia.playerSetup",
+  playerName: "convergenciaUsuario",
+  audioEnabled: "laConvergencia.audioEnabled"
 };
 const BASIC_ATTACK_DAMAGE = 10;
 const DEFENSE_DAMAGE_REDUCTION = 0.5;
@@ -39,30 +41,84 @@ const STAT_LABELS = {
 // Música y efectos utilizados por las acciones del juego.
 // ==========================================
 const AUDIO_LIBRARY = {
-  menu: { path: "assets/sounds/menu.mp3", volume: .22, loop: true, available: true },
-  battle: { path: "assets/sounds/battle.mp3", volume: .30, loop: true, available: true },
-  attack: { path: "assets/sounds/attack.mp3", volume: .46, available: true },
-  hit: { path: "assets/sounds/hit.wav", volume: .55, available: true },
-  defense: { path: "assets/sounds/defense.ogg", volume: .46, available: true },
-  ability: { path: "assets/sounds/ability.ogg", volume: .50, available: true },
-  click: { path: "assets/sounds/click.mp3", volume: .30, available: true },
-  victory: { path: "assets/sounds/victory.mp3", volume: .52, available: true },
-  defeat: { path: "assets/sounds/defeat.mp3", volume: .48, available: true }
+  menu: { path: "assets/sounds/menu-sector.mp3", volume: .24, loop: true },
+  battle: { path: "assets/sounds/battle.mp3", volume: .32, loop: true },
+  attack: { path: "assets/sounds/attack.ogg", volume: .48 },
+  hit: { path: "assets/sounds/hit.ogg", volume: .56 },
+  defense: { path: "assets/sounds/defense.ogg", volume: .48 },
+  ability: { path: "assets/sounds/ability.ogg", volume: .54 },
+  click: { path: "assets/sounds/click.mp3", volume: .24 },
+  victory: { path: "assets/sounds/victory.mp3", volume: .48 },
+  defeat: { path: "assets/sounds/defeat.ogg", volume: .46 }
 };
-const audioChannels=Object.fromEntries(Object.entries(AUDIO_LIBRARY).map(([name,config])=>{if(!config.available||typeof Audio!=="function")return[name,null];const sound=new Audio(config.path);sound.preload="auto";sound.loop=Boolean(config.loop);sound.volume=config.volume;return[name,sound]}));
-let audioUnlocked=false; let audioEnabled=true; let currentMusic=null;
-function safePlay(sound,restart=false){if(!sound||!audioEnabled||!audioUnlocked)return false;if(restart)sound.currentTime=0;const request=sound.play();request?.catch?.((error)=>console.warn("No se pudo reproducir el audio:",error));return true}
-function stopAudio(sound){if(!sound)return;sound.pause();sound.currentTime=0}
-function playSound(name){return safePlay(audioChannels[name],true)}
-function setMusic(name){if(currentMusic!==name){if(currentMusic)stopAudio(audioChannels[currentMusic]);currentMusic=name}return safePlay(audioChannels[name])}
+
+const audioChannels = Object.fromEntries(Object.entries(AUDIO_LIBRARY).map(([name, config]) => {
+  if (typeof Audio !== "function") return [name, null];
+  const sound = new Audio(config.path);
+  sound.preload = "auto";
+  sound.loop = Boolean(config.loop);
+  sound.volume = config.volume;
+  return [name, sound];
+}));
+let audioUnlocked = false;
+let audioEnabled = loadAudioPreference();
+let currentMusic = null;
+let musicFadeTimer = null;
+
+function loadAudioPreference() {
+  try { return globalThis.localStorage?.getItem(STORAGE_KEYS.audioEnabled) !== "false"; } catch { return true; }
+}
+function safePlay(sound, restart = false) {
+  if (!sound || !audioEnabled || !audioUnlocked || document.hidden) return false;
+  if (restart) sound.currentTime = 0;
+  sound.play()?.catch?.((error) => console.warn("No se pudo reproducir el audio:", error));
+  return true;
+}
+function stopAudio(sound) { if (!sound) return; sound.pause(); sound.currentTime = 0; }
+function playSound(name) { return safePlay(audioChannels[name], true); }
+
+// Cambia de pista con una bajada corta para que no se superpongan.
+function setMusic(name, afterChange) {
+  if (currentMusic === name) { const played = safePlay(audioChannels[name]); afterChange?.(); return played; }
+  const previousName = currentMusic;
+  const previous = audioChannels[previousName];
+  const startNext = () => {
+    stopAudio(previous);
+    if (previous && AUDIO_LIBRARY[previousName]) previous.volume = AUDIO_LIBRARY[previousName].volume;
+    currentMusic = name;
+    safePlay(audioChannels[name]);
+    afterChange?.();
+  };
+  if (musicFadeTimer !== null) globalThis.clearInterval?.(musicFadeTimer);
+  if (!previous || typeof globalThis.setInterval !== "function") { startNext(); return true; }
+  musicFadeTimer = globalThis.setInterval(() => {
+    previous.volume = Math.max(0, previous.volume - .05);
+    if (previous.volume > 0) return;
+    globalThis.clearInterval(musicFadeTimer);
+    musicFadeTimer = null;
+    startNext();
+  }, 35);
+  return true;
+}
 function syncMusicForScreen(screenId = gameState?.currentScreen) {
   if (screenId === "results") return setMusic(null);
   return setMusic(screenId === "battle" ? "battle" : "menu");
 }
-// Los navegadores bloquean autoplay; esperamos la primera interacción.
-function unlockAudio(){if(audioUnlocked)return false;audioUnlocked=true;syncMusicForScreen();return true}
-function toggleAudio(){audioEnabled=!audioEnabled;if(!audioEnabled)Object.values(audioChannels).forEach(stopAudio);else syncMusicForScreen();renderAudioControl();return audioEnabled}
-function renderAudioControl(){const button=document.getElementById("audio-toggle");if(!button)return;const available=Object.values(AUDIO_LIBRARY).some((item)=>item.available);button.disabled=!available;button.setAttribute("aria-pressed",String(!audioEnabled));button.textContent=available?(audioEnabled?"AUDIO · ACTIVO":"AUDIO · SILENCIADO"):"AUDIO · NO DISPONIBLE"}
+// El navegador permite audio después de la primera interacción.
+function unlockAudio() { if (audioUnlocked) return false; audioUnlocked = true; syncMusicForScreen(); return true; }
+function toggleAudio() {
+  audioEnabled = !audioEnabled;
+  try { globalThis.localStorage?.setItem(STORAGE_KEYS.audioEnabled, String(audioEnabled)); } catch {}
+  if (!audioEnabled) Object.values(audioChannels).forEach(stopAudio); else syncMusicForScreen();
+  renderAudioControl();
+  return audioEnabled;
+}
+function renderAudioControl() {
+  const button = document.getElementById("audio-toggle");
+  if (!button) return;
+  button.setAttribute("aria-pressed", String(!audioEnabled));
+  button.textContent = audioEnabled ? "SONIDO ON" : "SONIDO OFF";
+}
 // ==========================================
 // ESTADO DEL JUEGO
 // Guarda la preparación actual: equipo, modo, arena y pantalla.
@@ -85,6 +141,8 @@ let archiveFilter = "all";
 let cpuTurnTimer = null;
 let battleExitModalOpen = false;
 let allowBattleExitNavigation = false;
+let currentPlayerName = loadPlayerName();
+let playerDialogMode = "identify";
 // Elementos del HTML que la aplicación actualiza con frecuencia.
 const characterGrid = document.getElementById("character-grid");
 const teamCounter = document.getElementById("team-counter");
@@ -131,6 +189,48 @@ const SCREEN_IDS = Object.freeze({
   results: "results-section",
   archive: "archivo"
 });
+// Recupera el nombre guardado en el navegador.
+function loadPlayerName() {
+  try { return globalThis.localStorage?.getItem(STORAGE_KEYS.playerName)?.trim() ?? ""; } catch { return ""; }
+}
+function savePlayerName(name) {
+  const cleanName = String(name ?? "").trim();
+  if (cleanName.length < 2 || cleanName.length > 20) return false;
+  try { globalThis.localStorage?.setItem(STORAGE_KEYS.playerName, cleanName); } catch { return false; }
+  currentPlayerName = cleanName;
+  renderPlayerProfile();
+  renderArchive();
+  return true;
+}
+function renderPlayerProfile() {
+  const display = document.getElementById("player-name-display");
+  if (display) display.textContent = currentPlayerName || "SIN IDENTIFICAR";
+}
+function requestPlayerName(changePlayer = false) {
+  const dialog = document.getElementById("player-dialog");
+  const input = document.getElementById("player-name-input");
+  if (!dialog || !input) return false;
+  playerDialogMode = changePlayer ? "change" : "identify";
+  document.getElementById("player-dialog-title").textContent = changePlayer ? "CAMBIAR JUGADOR" : "IDENTIFÍCATE, CONVERGENTE";
+  dialog.querySelector?.('[data-action="cancel-player"]')?.toggleAttribute("hidden", !changePlayer);
+  input.value = changePlayer ? currentPlayerName : "";
+  document.getElementById("player-name-error").textContent = "";
+  if (typeof dialog.showModal === "function") dialog.showModal(); else dialog.setAttribute("open", "");
+  input.focus?.();
+  return true;
+}
+function submitPlayerName(event) {
+  event.preventDefault?.();
+  const input = document.getElementById("player-name-input");
+  const name = input?.value.trim() ?? "";
+  const error = document.getElementById("player-name-error");
+  if (name.length < 2 || name.length > 20) { error.textContent = "USA ENTRE 2 Y 20 CARACTERES."; return false; }
+  if (!savePlayerName(name)) { error.textContent = "NO SE PUDO GUARDAR EL NOMBRE."; return false; }
+  document.getElementById("player-dialog")?.close?.();
+  announce("Jugador " + name + " identificado.");
+  return true;
+}
+
 // ==========================================
 // NAVEGACIÓN
 // Muestra una pantalla y oculta las demás.
@@ -242,6 +342,7 @@ function confirmBattleExit() {
   pauseCpuTurnForExit();
   // Elegir SÍ sí abandona: detenemos audio y limpiamos únicamente el estado
   // temporal del combate antes de regresar a JUGAR.
+  archiveAbandonedMatch();
   setMusic(null);
   battleState = null;
   matchConfig = null;
@@ -806,8 +907,7 @@ function finishBattle(winner) {
   battleState.switchSelectionOpen = false;
   battleState.cpuThinking = false;
   addBattleLog(winner === "player" ? "VICTORIA: el equipo CPU ha sido derrotado." : "DERROTA: tu equipo ha sido derrotado.");
-  setMusic(null);
-  playSound(winner === "player" ? "victory" : "defeat");
+  setMusic(null, () => playSound(winner === "player" ? "victory" : "defeat"));
   showBattleEffect(winner, "winner", 900);
   archiveFinishedMatch();
   showScreen("results");
@@ -1292,22 +1392,18 @@ function copyHistorySideStats(stats = {}) {
   };
 }
 
-function createMatchHistoryEntry() {
-  if (!battleState || battleState.status !== "finished" || !["player", "cpu"].includes(battleState.winner)) return null;
+function createMatchHistoryEntry(result = battleState?.winner) {
+  const validResult = ["player", "cpu", "abandoned"].includes(result);
+  if (!battleState || !validResult) return null;
   return {
     id: createLocalMatchId(),
+    playerName: currentPlayerName || "SIN IDENTIFICAR",
     completedAt: new Date().toISOString(),
     modeId: battleState.modeId,
     arenaId: battleState.arenaId,
-    winner: battleState.winner,
-    player: {
-      teamIds: [...battleState.player.teamIds],
-      initialCharacterId: battleState.player.initialCharacterId
-    },
-    cpu: {
-      teamIds: [...battleState.cpu.teamIds],
-      initialCharacterId: battleState.cpu.initialCharacterId
-    },
+    winner: result,
+    player: { teamIds: [...battleState.player.teamIds], initialCharacterId: battleState.player.initialCharacterId },
+    cpu: { teamIds: [...battleState.cpu.teamIds], initialCharacterId: battleState.cpu.initialCharacterId },
     stats: {
       totalTurns: Number.isFinite(battleState.stats?.totalTurns) ? battleState.stats.totalTurns : 0,
       player: copyHistorySideStats(battleState.stats?.player),
@@ -1316,30 +1412,41 @@ function createMatchHistoryEntry() {
   };
 }
 
+// Guarda una batalla terminada una sola vez.
 function archiveFinishedMatch() {
   if (!battleState || battleState.status !== "finished" || !["player", "cpu"].includes(battleState.winner)) return false;
   if (battleState.archived || battleState.archiveAttempted) return false;
   battleState.archiveAttempted = true;
-  const entry = createMatchHistoryEntry();
-  if (!entry) return false;
   const history = loadMatchHistory();
-  history.push(entry);
+  history.push(createMatchHistoryEntry());
   const saved = saveMatchHistory(history);
   battleState.archived = saved;
   renderArchive();
   return saved;
 }
 
+function archiveAbandonedMatch() {
+  if (!isBattleActive() || battleState.archived || battleState.archiveAttempted) return false;
+  battleState.archiveAttempted = true;
+  const history = loadMatchHistory();
+  history.push(createMatchHistoryEntry("abandoned"));
+  const saved = saveMatchHistory(history);
+  battleState.archived = saved;
+  return saved;
+}
+
+// Mostramos solamente las batallas del jugador actual.
+function getCurrentPlayerHistory(history = loadMatchHistory()) {
+  if (!currentPlayerName) return history;
+  return history.filter((entry) => entry?.playerName === currentPlayerName);
+}
+
 function getArchiveSummary(history) {
   const matches = Array.isArray(history) ? history : [];
   const victories = matches.filter((entry) => entry?.winner === "player").length;
   const defeats = matches.filter((entry) => entry?.winner === "cpu").length;
-  return {
-    matches: matches.length,
-    victories,
-    defeats,
-    winPercentage: matches.length ? Math.round((victories / matches.length) * 100) : 0
-  };
+  const abandoned = matches.filter((entry) => entry?.winner === "abandoned").length;
+  return { matches: matches.length, victories, defeats, abandoned, winPercentage: matches.length ? Math.round((victories / matches.length) * 100) : 0 };
 }
 
 function resolveCharacterName(characterId) {
@@ -1364,52 +1471,62 @@ function archiveNumber(value) {
 }
 
 function renderArchiveEntry(entry) {
-  const winner = entry?.winner === "player" ? "VICTORIA" : entry?.winner === "cpu" ? "DERROTA" : "—";
+  const result = entry?.winner === "player" ? "VICTORIA" : entry?.winner === "cpu" ? "DERROTA" : entry?.winner === "abandoned" ? "ABANDONADA" : "—";
   const playerStats = entry?.stats?.player ?? {};
   const cpuStats = entry?.stats?.cpu ?? {};
   const playerTeam = Array.isArray(entry?.player?.teamIds) ? entry.player.teamIds.map(resolveCharacterName).join(" · ") : "—";
   const cpuTeam = Array.isArray(entry?.cpu?.teamIds) ? entry.cpu.teamIds.map(resolveCharacterName).join(" · ") : "—";
   const matchId = typeof entry?.id === "string" ? entry.id.replace(/[^a-zA-Z0-9_-]/g, "") : "";
-  return `<article class="archive-match ${winner === "VICTORIA" ? "is-victory" : winner === "DERROTA" ? "is-defeat" : ""}" data-match-id="${matchId}">
-    <small>${formatArchiveDate(entry?.completedAt)} · ${winner}</small>
-    <h3>${resolveModeName(entry?.modeId)}</h3>
-    <p>ARENA · ${resolveArenaName(entry?.arenaId)}<br>INICIAL JUGADOR · ${resolveCharacterName(entry?.player?.initialCharacterId)}<br>INICIAL CPU · ${resolveCharacterName(entry?.cpu?.initialCharacterId)}</p>
+  return `<article class="archive-match ${result === "VICTORIA" ? "is-victory" : result === "DERROTA" ? "is-defeat" : "is-abandoned"}" data-match-id="${matchId}">
+    <small>${formatArchiveDate(entry?.completedAt)} · ${result}</small>
+    <h3>${resolveCharacterName(entry?.player?.initialCharacterId)} VS ${resolveCharacterName(entry?.cpu?.initialCharacterId)}</h3>
+    <p>ARENA · ${resolveArenaName(entry?.arenaId)}<br>MODO · ${resolveModeName(entry?.modeId)}</p>
     <div class="archive-match-stats"><span>TURNOS <b>${archiveNumber(entry?.stats?.totalTurns)}</b></span><span>DAÑO CAUSADO <b>${archiveNumber(playerStats.damageDealt)}</b></span><span>DAÑO RECIBIDO <b>${archiveNumber(playerStats.damageReceived)}</b></span></div>
-    <details><summary>VER DETALLE</summary><p>EQUIPO JUGADOR · ${playerTeam}<br>EQUIPO CPU · ${cpuTeam}</p><div class="archive-detail-stats"><span>ATAQUES · ${archiveNumber(playerStats.basicAttacks)}</span><span>HABILIDADES · ${archiveNumber(playerStats.abilitiesUsed)}</span><span>DEFENSAS · ${archiveNumber(playerStats.defenses)}</span><span>ANÁLISIS · ${archiveNumber(playerStats.analyzes)}</span><span>CAMBIOS · ${archiveNumber(playerStats.switches)}</span><span>DERROTADOS · ${archiveNumber(playerStats.charactersDefeated)}</span><span>DAÑO CPU · ${archiveNumber(cpuStats.damageDealt)}</span></div></details>
+    <details><summary>VER DETALLE</summary><p>EQUIPO JUGADOR · ${playerTeam}<br>EQUIPO CPU · ${cpuTeam}</p><div class="archive-detail-stats"><span>ATAQUES · ${archiveNumber(playerStats.basicAttacks)}</span><span>HABILIDADES · ${archiveNumber(playerStats.abilitiesUsed)}</span><span>DEFENSAS · ${archiveNumber(playerStats.defenses)}</span><span>CAMBIOS · ${archiveNumber(playerStats.switches)}</span><span>DAÑO CPU · ${archiveNumber(cpuStats.damageDealt)}</span></div></details>
   </article>`;
 }
 
 function renderArchive() {
-  const history = loadMatchHistory();
-  const summary = getArchiveSummary(history);
-  const filteredHistory = history.filter((entry) => archiveFilter === "all" || entry?.winner === archiveFilter).slice().reverse();
-  const entries = filteredHistory.length
-    ? filteredHistory.map(renderArchiveEntry).join("")
-    : `<div class="archive-empty">${history.length ? "NO HAY PARTIDAS PARA ESTE FILTRO" : "AÚN NO HAY PARTIDAS REGISTRADAS"}</div>`;
-  archiveContent.innerHTML = `<div class="archive-summary">
-      <p><small>PARTIDAS JUGADAS</small><b>${summary.matches}</b></p><p><small>VICTORIAS</small><b>${summary.victories}</b></p><p><small>DERROTAS</small><b>${summary.defeats}</b></p><p><small>PORCENTAJE DE VICTORIA</small><b>${summary.winPercentage}%</b></p>
-    </div><div class="archive-toolbar"><div><button type="button" data-archive-filter="all" aria-pressed="${archiveFilter === "all"}" class="${archiveFilter === "all" ? "is-active" : ""}">TODAS</button><button type="button" data-archive-filter="player" aria-pressed="${archiveFilter === "player"}" class="${archiveFilter === "player" ? "is-active" : ""}">VICTORIAS</button><button type="button" data-archive-filter="cpu" aria-pressed="${archiveFilter === "cpu"}" class="${archiveFilter === "cpu" ? "is-active" : ""}">DERROTAS</button></div><button type="button" data-action="clear-history" ${disabledAttributes(!history.length)}>BORRAR HISTORIAL</button></div><div class="archive-history">${entries}</div>`;
+  if (!archiveContent) return;
+  const playerHistory = getCurrentPlayerHistory();
+  const summary = getArchiveSummary(playerHistory);
+  const filteredHistory = playerHistory.filter((entry) => archiveFilter === "all" || entry?.winner === archiveFilter).slice().reverse();
+  const entries = filteredHistory.length ? filteredHistory.map(renderArchiveEntry).join("") : `<div class="archive-empty">${playerHistory.length ? "NO HAY PARTIDAS PARA ESTE FILTRO" : "AÚN NO HAY PARTIDAS DE ESTE JUGADOR"}</div>`;
+  archiveContent.innerHTML = `<div class="archive-summary"><p><small>BATALLAS</small><b>${summary.matches}</b></p><p><small>VICTORIAS</small><b>${summary.victories}</b></p><p><small>DERROTAS</small><b>${summary.defeats}</b></p><p><small>ABANDONADAS</small><b>${summary.abandoned}</b></p></div><div class="archive-toolbar"><p class="archive-player">JUGADOR · ${currentPlayerName || "SIN IDENTIFICAR"}</p><div><button type="button" data-archive-filter="all" aria-pressed="${archiveFilter === "all"}" class="${archiveFilter === "all" ? "is-active" : ""}">TODAS</button><button type="button" data-archive-filter="player" aria-pressed="${archiveFilter === "player"}" class="${archiveFilter === "player" ? "is-active" : ""}">VICTORIAS</button><button type="button" data-archive-filter="cpu" aria-pressed="${archiveFilter === "cpu"}" class="${archiveFilter === "cpu" ? "is-active" : ""}">DERROTAS</button><button type="button" data-archive-filter="abandoned" aria-pressed="${archiveFilter === "abandoned"}" class="${archiveFilter === "abandoned" ? "is-active" : ""}">ABANDONADAS</button></div><button type="button" data-action="download-history" ${disabledAttributes(!playerHistory.length)}>DESCARGAR HISTORIAL</button><button type="button" data-action="clear-history" ${disabledAttributes(!playerHistory.length)}>BORRAR HISTORIAL</button></div><div class="archive-history">${entries}</div>`;
 }
 
 function setArchiveFilter(filter) {
-  if (!["all", "player", "cpu"].includes(filter)) return false;
+  if (!["all", "player", "cpu", "abandoned"].includes(filter)) return false;
   archiveFilter = filter;
   renderArchive();
   return true;
 }
 
 function clearMatchHistory() {
-  const confirmed = typeof globalThis.confirm === "function"
-    ? globalThis.confirm("¿Borrar todo el historial local de partidas?")
-    : false;
+  const confirmed = typeof globalThis.confirm === "function" ? globalThis.confirm("¿Borrar el historial de " + (currentPlayerName || "este jugador") + "?") : false;
   if (!confirmed) return false;
-  try {
-    globalThis.localStorage?.removeItem(STORAGE_KEYS.matchHistory);
-  } catch {
-    // El fallo del historial no afecta al juego.
-  }
+  const history = loadMatchHistory();
+  const hasNamedHistory = history.some((entry) => entry?.playerName);
+  if (!currentPlayerName || !hasNamedHistory) {
+    try { globalThis.localStorage?.removeItem(STORAGE_KEYS.matchHistory); } catch {}
+  } else saveMatchHistory(history.filter((entry) => entry?.playerName !== currentPlayerName));
   archiveFilter = "all";
   renderArchive();
+  return true;
+}
+
+// Convierte el historial del jugador a JSON y lo descarga.
+function createHistoryExport() {
+  return { juego: "La Convergencia", jugador: currentPlayerName, batallas: getCurrentPlayerHistory() };
+}
+
+function downloadPlayerHistory() {
+  const data = createHistoryExport();
+  if (!data.batallas.length || typeof Blob !== "function" || !globalThis.URL?.createObjectURL) return false;
+  const url = globalThis.URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url; link.download = "historial-la-convergencia.json"; link.click();
+  globalThis.URL.revokeObjectURL(url);
   return true;
 }
 function renderFinalTeam(side) {
@@ -1550,6 +1667,7 @@ function renderCoreApp() {
   renderBattle();
   renderResults();
   renderArchive();
+  renderPlayerProfile();
 }
 // Interpreta los botones que cambian entre pantallas.
 function handleScreenNavigation(event) {
@@ -1604,6 +1722,7 @@ archiveContent.addEventListener("click", (event) => {
   const filterButton = event.target.closest("[data-archive-filter]");
   if (filterButton) setArchiveFilter(filterButton.dataset.archiveFilter);
   if (event.target.closest('[data-action="clear-history"]')) clearMatchHistory();
+  if (event.target.closest('[data-action="download-history"]')) downloadPlayerHistory();
 });
 resultsSection.addEventListener("click", (event) => {
   const action = event.target.closest("[data-action]")?.dataset.action;
@@ -1647,6 +1766,7 @@ function getSetupScreen(step = getNextSetupStep()) {
 }
 
 function continueSetup() {
+  if (!currentPlayerName) { requestPlayerName(); return false; }
   const step = getNextSetupStep();
   if (step === "ready") return createAndShowMatch();
   showScreen(getSetupScreen(step));
@@ -1771,6 +1891,7 @@ function closeTutorial() {
 }
 
 document.getElementById("continue-characters-button")?.addEventListener("click", continueFromCharacters);
+document.getElementById("player-form")?.addEventListener("submit", submitPlayerName);
 document.getElementById("audio-toggle")?.addEventListener("click", toggleAudio);
 ["pointerdown", "keydown"].forEach((eventName) => document.addEventListener(eventName, unlockAudio, { once: true }));
 // Dirige cada clic según el atributo data-action del botón.
@@ -1779,6 +1900,8 @@ document.addEventListener("click", (event) => {
   if (action === "resume-setup") continueSetup();
   if (action === "open-tutorial") openTutorial();
   if (action === "close-tutorial") closeTutorial();
+  if (action === "change-player") requestPlayerName(true);
+  if (action === "cancel-player") document.getElementById("player-dialog")?.close?.();
   if (action === "confirm-battle-exit") confirmBattleExit();
   if (action === "cancel-battle-exit") cancelBattleExit();
   if (action === "lobby-toggle-character") toggleCharacterSelection(Number(event.target.closest("[data-character-id]").dataset.characterId));
@@ -1802,4 +1925,10 @@ globalThis.addEventListener?.("popstate", () => {
   if (!isBattleActive()) return;
   globalThis.history?.pushState?.({ battleGuard: true }, "", globalThis.location?.href ?? "");
   requestBattleExit();
+});
+
+// Pausa la música al ocultar la pestaña y continúa al regresar.
+document.addEventListener("visibilitychange", () => {
+  const music = audioChannels[currentMusic];
+  if (document.hidden) music?.pause?.(); else safePlay(music);
 });

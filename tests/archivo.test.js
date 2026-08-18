@@ -42,6 +42,43 @@ function finishedBattle(storage, winner = "player", options = {}) {
   return setup;
 }
 
+test("nombre obligatorio se limpia, valida y persiste", () => {
+  const storage = new MemoryStorage();
+  const engine = createEngine({ localStorage: storage });
+  assert.equal(engine.savePlayerName(" "), false);
+  assert.equal(engine.savePlayerName(" M "), false);
+  assert.equal(engine.savePlayerName("  Moises  "), true);
+  assert.equal(storage.getItem("convergenciaUsuario"), "Moises");
+  assert.equal(engine.currentPlayerName, "Moises");
+});
+
+test("historial se filtra por jugador y exporta JSON ordenado", () => {
+  const entries = [
+    { id: "1", playerName: "Moises", winner: "player", completedAt: "2026-08-17T10:00:00Z" },
+    { id: "2", playerName: "Laura", winner: "cpu", completedAt: "2026-08-18T10:00:00Z" },
+    { id: "3", playerName: "Moises", winner: "abandoned", completedAt: "2026-08-19T10:00:00Z" }
+  ];
+  const storage = new MemoryStorage({ convergenciaUsuario: "Moises", [STORAGE_KEY]: JSON.stringify(entries) });
+  const engine = createEngine({ localStorage: storage });
+  assert.deepEqual(Array.from(engine.getCurrentPlayerHistory(), entry => entry.id), ["1", "3"]);
+  const exported = engine.createHistoryExport();
+  assert.equal(exported.juego, "La Convergencia");
+  assert.equal(exported.jugador, "Moises");
+  assert.equal(exported.batallas.length, 2);
+  assert.doesNotThrow(() => JSON.stringify(exported, null, 2));
+});
+
+test("abandonar combate se registra una sola vez", () => {
+  const storage = new MemoryStorage({ convergenciaUsuario: "Moises" });
+  const { engine } = setupBattle({}, { localStorage: storage });
+  assert.equal(engine.archiveAbandonedMatch(), true);
+  assert.equal(engine.archiveAbandonedMatch(), false);
+  const history = JSON.parse(storage.getItem(STORAGE_KEY));
+  assert.equal(history.length, 1);
+  assert.equal(history[0].winner, "abandoned");
+  assert.equal(history[0].playerName, "Moises");
+});
+
 test("historial inexistente y JSON corrupto devuelven array vacío", () => {
   const empty = new MemoryStorage();
   assert.deepEqual(Array.from(createEngine({ localStorage: empty }).loadMatchHistory()), []);
@@ -171,9 +208,9 @@ test("replay es partida independiente y se archiva con ID nuevo", () => {
 test("resumen deriva partidas, victorias, derrotas y porcentaje", () => {
   const engine = createEngine({ localStorage: new MemoryStorage() });
   let summary = engine.getArchiveSummary([]);
-  assert.deepEqual({ ...summary }, { matches: 0, victories: 0, defeats: 0, winPercentage: 0 });
+  assert.deepEqual({ ...summary }, { matches: 0, victories: 0, defeats: 0, abandoned: 0, winPercentage: 0 });
   summary = engine.getArchiveSummary([{ winner: "player" }, { winner: "player" }, { winner: "cpu" }]);
-  assert.deepEqual({ ...summary }, { matches: 3, victories: 2, defeats: 1, winPercentage: 67 });
+  assert.deepEqual({ ...summary }, { matches: 3, victories: 2, defeats: 1, abandoned: 0, winPercentage: 67 });
 });
 
 test("máximo 50 conserva registros más recientes", () => {

@@ -175,6 +175,23 @@ test("archivos activos son UTF-8 válido", () => {
   ["index.html", "index.css", "app.js", "js/data/characters.js", "js/data/game-modes.js", "js/data/arenas.js"].forEach((name) => decoder.decode(fs.readFileSync(path.join(root, name))));
 });
 
+test("usuario e historial tienen controles integrados", () => {
+  assert.match(html, /id="player-dialog"/);
+  assert.match(html, /id="player-name-input"[^>]*minlength="2"[^>]*maxlength="20"/);
+  assert.match(html, /data-action="change-player"/);
+  assert.match(app, /data-action="download-history"/);
+});
+
+test("los nueve audios locales existen y las acciones los utilizan", () => {
+  const sounds = ["menu-sector.mp3", "battle.mp3", "attack.ogg", "hit.ogg", "ability.ogg", "defense.ogg", "victory.mp3", "defeat.ogg", "click.mp3"];
+  sounds.forEach((name) => assert.equal(fs.existsSync(path.join(root, "assets/sounds", name)), true, name));
+  assert.equal(app.includes('playSound("attack")'), true);
+  assert.equal(app.includes('playSound("defense")'), true);
+  assert.equal(app.includes('playSound("hit")'), true);
+  assert.equal(app.includes('playSound("ability")'), true);
+  assert.doesNotMatch(app, /assets\/sounds\/(?:menu\.mp3|attack\.mp3|hit\.wav|defeat\.mp3)/);
+});
+
 test("la entrega no conserva respaldos ni informes residuales", () => {
   assert.equal(fs.existsSync(path.join(root, "backup")), false);
   assert.equal(fs.existsSync(path.join(root, "docs", "reports")), false);

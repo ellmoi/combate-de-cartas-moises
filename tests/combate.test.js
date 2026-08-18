@@ -84,7 +84,7 @@ function createEngine(options = {}) {
   };
   const testMath = Object.create(Math);
   if (typeof options.random === "function") testMath.random = options.random;
-  const context = vm.createContext({ document, console, Math: testMath, Number, Array, Object, localStorage: options.localStorage, confirm: options.confirm, crypto: options.crypto, setTimeout: options.setTimeout });
+  const context = vm.createContext({ document, console, Math: testMath, Number, Array, Object, localStorage: options.localStorage ?? { getItem(key) { return key === "convergenciaUsuario" ? "Pruebas" : null; }, setItem() {}, removeItem() {} }, confirm: options.confirm, crypto: options.crypto, setTimeout: options.setTimeout });
   let source = read("app.js").replace(/^(?:\/\/.*\r?\n|\s)*import[\s\S]*?from "\.\/js\/config\/ability-prototype\.js";\s*/, "");
   source = `const characters = globalThis.__data.characters;
 const gameModes = globalThis.__data.gameModes;
@@ -99,6 +99,7 @@ globalThis.__engine = {
   set matchConfig(value) { matchConfig = value; },
   get battleState() { return battleState; },
   set battleState(value) { battleState = value; },
+  get currentPlayerName() { return currentPlayerName; },
   createMatchConfig, createBattleState, createFighterState, initializeFighters,
   toggleCharacterSelection, setInitialCharacter, confirmTeam, selectGameMode, selectArena, updateGameReady, viewCharacter, prepareMatch, finishBattle,
   announce, showScreen, scrollToSection, getTeamValidationMessage, getStartValidationMessage, renderConfirmation, renderStartButton, renderBattle,
@@ -109,10 +110,10 @@ globalThis.__engine = {
   beginTurn, startBattle, getValidCpuActions, performCpuTurn, isBattleActive, requestBattleExit, cancelBattleExit, confirmBattleExit,
   basicAttack, defend, analyzeOpponent, useAbility, switchPlayerCharacter,
   renderEffectBadges, renderResults, replayMatch, returnToTeam, returnToLobby, safePercentage,
-  loadMatchHistory, saveMatchHistory, createMatchHistoryEntry, archiveFinishedMatch,
-  getArchiveSummary, renderArchive, setArchiveFilter, clearMatchHistory,
+  loadMatchHistory, saveMatchHistory, createMatchHistoryEntry, archiveFinishedMatch, archiveAbandonedMatch, getCurrentPlayerHistory,
+  getArchiveSummary, renderArchive, setArchiveFilter, clearMatchHistory, createHistoryExport, downloadPlayerHistory,
   resolveCharacterName, resolveArenaName, resolveModeName, formatArchiveDate,
-  loadPlayerSetup, savePlayerSetup, restorePlayerSetup, resetPlayerSetup
+  loadPlayerSetup, savePlayerSetup, restorePlayerSetup, resetPlayerSetup, loadPlayerName, savePlayerName
 };`;
   context.__data = { characters, gameModes, arenas, abilityConfig };
   vm.runInContext(source, context, { filename: "app.js" });

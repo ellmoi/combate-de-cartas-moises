@@ -1,3 +1,12 @@
+// ======================================================
+// PRUEBAS DEL ARCHIVO DE PARTIDAS
+// ======================================================
+//
+// Comprueban cómo se guarda, recupera, filtra y borra el historial.
+// Las pruebas preparan un localStorage simulado para no modificar
+// los datos reales del navegador mientras se ejecutan.
+//
+// Flujo habitual: preparar historial -> ejecutar función -> comprobar.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";

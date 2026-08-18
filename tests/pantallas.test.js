@@ -1,3 +1,10 @@
+// ======================================================
+// PRUEBAS DE PANTALLAS Y ESTRUCTURA
+// ======================================================
+//
+// Comprueban navegación, ids únicos, rutas de imágenes, UTF-8 y
+// estilos esenciales. También verifican que solo una pantalla quede
+// activa y que cambiar de vista no destruya la batalla.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -144,10 +151,10 @@ test("todos los retratos oficiales referidos existen", () => {
   });
 });
 
-test("Camila conserva placeholder sin imagen inventada", () => {
-  const camila = characters.find((character) => character.name === "Camila");
-  assert.equal(camila.image, null);
-  assert.match(app, /character\.image[\s\S]*detail-placeholder/);
+test("los 28 personajes usan retratos separados desde la fuente única", () => {
+  assert.equal(characters.every((character) => character.image?.startsWith("assets/characters/")), true);
+  assert.equal(new Set(characters.map((character) => character.image)).size, 28);
+  assert.doesNotMatch(app, /IMAGEN PENDIENTE|DATOS PROVISIONALES/);
 });
 
 test("los dos fondos auditados existen y hero es el fondo activo", () => {

@@ -1,3 +1,10 @@
+// ======================================================
+// PRUEBAS DE REEMPLAZOS EN COMBATE
+// ======================================================
+//
+// Preparan derrotas controladas para comprobar cambios obligatorios,
+// reservas vivas y el final de la partida cuando no quedan reemplazos.
+// Incluyen tanto decisiones del jugador como cambios automáticos CPU.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -152,15 +159,15 @@ test("sin reservas CPU la última derrota abre victoria", () => {
   assert.equal(engine.gameState.currentScreen, "results");
 });
 
-test("Camila usa placeholder seguro en el selector", () => {
+test("Camila usa su retrato separado en el selector", () => {
   const { engine } = setup({ playerIds: [1,8], cpuIds: [2,3], playerActive: 1, cpuActive: 2 });
   engine.getFighter("player").currentHealth = 1;
   engine.applyDamage("cpu", "player", 10);
   engine.renderBattle();
   const markup = engine.elements.get("battle-preview").innerHTML;
-  assert.match(markup, /switch-placeholder/);
+  assert.match(markup, /assets\/characters\/camila\.png/);
   assert.match(markup, /CAMILA/);
-  assert.doesNotMatch(markup, /NaN|undefined/);
+  assert.doesNotMatch(markup, /switch-placeholder|NaN|undefined/);
 });
 
 test("VS usa lados equivalentes, centro estable y botón contenido", () => {

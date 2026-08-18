@@ -16,56 +16,41 @@
           CENTROAMÉRICA</small></span></a>
     <nav id="primary-navigation" aria-label="Navegación principal"><a href="#lobby" data-screen-target="lobby">JUGAR</a><a href="#cartas" data-screen-target="characters">CARTAS</a><a href="#equipo" data-screen-target="team">EQUIPO</a><a href="#modos" data-screen-target="modes">MODOS</a><a
         href="#arenas" data-screen-target="arenas">ARENAS</a><a href="#archivo" data-screen-target="archive">ARCHIVO</a></nav>
-    <p><i></i> LOCAL · VS MÁQUINA</p>
+    <button id="audio-toggle" class="audio-toggle" type="button" aria-pressed="false" title="Los archivos de audio todavía no están disponibles">AUDIO · NO DISPONIBLE</button>
   </header>
   <!-- Cada sección representa una pantalla que JavaScript muestra u oculta. -->
   <main>
+    <!-- ==================================================
+         LOBBY
+         ==================================================
+         JavaScript actualiza aquí el modo, la arena, el equipo
+         y el personaje inicial seleccionados.
+    -->
     <section class="lobby screen" id="lobby">
-      <div class="atmosphere"></div>
-      <div class="hero-brand"><small>CICLO 01 · CENTROAMÉRICA</small>
-        <h1>LA <em>CONVERGENCIA</em></h1>
-        <p>EL PODER NO DETERMINA AL GANADOR.</p><button type="button" data-action="resume-setup">INICIAR CONVERGENCIA →</button><button class="tutorial-open-button" type="button" data-action="open-tutorial">CÓMO JUGAR</button>
-      </div>
-      <div class="grid-floor"></div>
-
-      <div class="featured-character" id="lobby-featured-character">
-        <div></div><img id="lobby-character-image" src="assets/reference/maya.jpg" alt="Maya"><span
-          id="lobby-character-name">INICIAL · MAYA</span>
-      </div>
-      <div class="cube"><i></i><i></i><i></i></div>
-      <aside class="setup">
-        <article>
-          <header><small>MODO</small><b id="lobby-mode-status">PRINCIPAL</b></header>
-          <h2 id="lobby-mode-name">GUERRA DE SELECCIÓN</h2>
-          <p id="lobby-mode-description">Jugador vs Máquina · Equipo de cinco · Una carta activa · Cuatro reservas ·
-            Cambios permitidos.</p><a href="#modos" data-screen-target="modes">CAMBIAR
-            MODO</a>
-        </article>
-        <article>
-          <header><small>ARENA</small><b id="lobby-arena-status">01 / 06</b></header>
-          <h3 id="lobby-arena-name">DISTRITO UMBRAL</h3>
-          <p id="lobby-arena-description">La ciudad continúa despierta bajo una anomalía apenas visible.</p><a
-            href="#arenas" data-screen-target="arenas">CAMBIAR ARENA</a>
-        </article>
-      </aside>
-      <div class="team-dock">
-        <header><span><small>EQUIPO ACTUAL</small><b id="lobby-team-counter">5 / 5</b></span><a href="#equipo" data-screen-target="team">EDITAR
-            EQUIPO</a></header>
-        <div id="lobby-team-slots">
-          <article class="active"><img src="assets/reference/maya.jpg"><b>01</b><small>ACTIVA</small></article>
-          <article><img src="assets/reference/valeria.jpg"><b>02</b><small>RESERVA</small></article>
-          <article><img src="assets/reference/noah.jpg"><b>03</b><small>RESERVA</small></article>
-          <article><img src="assets/reference/axel.jpg"><b>04</b><small>RESERVA</small></article>
-          <article><span>IS</span><b>05</b><small>RESERVA</small></article>
-        </div>
-      </div>
-      <div class="play">
-        <p id="lobby-team-status">✓ EQUIPO 5/5 &nbsp; ✓ MODO &nbsp; ✓ ARENA</p><button id="start-convergence-button"
-          type="button">JUGAR <b>→</b></button><small>COMBATE DE SELECCIÓN · VS
-          MÁQUINA</small>
+      <div class="atmosphere"></div><div class="grid-floor"></div>
+      <div id="lobby-featured-character" hidden><img id="lobby-character-image" alt=""><span id="lobby-character-name"></span></div>
+      <div class="play-layout">
+        <section class="play-main" aria-labelledby="play-title">
+          <header class="play-heading"><small>CICLO 01 · VS MÁQUINA</small><h1 id="play-title">COMBATE DE <span>SELECCIÓN</span></h1><p>Forma tu equipo de cinco convergentes y enfréntate a la máquina.</p></header>
+          <section class="play-team" aria-labelledby="play-team-title">
+            <header><div><small>FORMACIÓN</small><h2 id="play-team-title">SELECCIONA TU EQUIPO</h2></div><b id="lobby-team-counter">0 / 5</b></header>
+            <div id="lobby-team-slots" class="play-team-slots"></div>
+          </section>
+          <section class="play-roster" aria-labelledby="play-roster-title">
+            <header><div><small>ARCHIVO ACTIVO</small><h2 id="play-roster-title">CONVERGENTES DISPONIBLES</h2></div><span>SELECCIONA UNA TARJETA</span></header>
+            <div id="lobby-available-grid" class="play-available-grid"></div>
+          </section>
+        </section>
+        <aside class="play-sidebar">
+          <article><header><small>MODO DE JUEGO</small><b id="lobby-mode-status">SIN SELECCIONAR</b></header><h2 id="lobby-mode-name">VS MÁQUINA</h2><p id="lobby-mode-description">Enfréntate a la IA en combates estratégicos.</p><a href="#modos" data-screen-target="modes">CAMBIAR MODO</a></article>
+          <article class="play-arena-card"><header><small>ARENA SELECCIONADA</small><b id="lobby-arena-status">SIN SELECCIONAR</b></header><div class="play-arena-image" aria-hidden="true"></div><h3 id="lobby-arena-name">SELECCIONA UNA ARENA</h3><p id="lobby-arena-description">Elige el escenario del combate.</p><a href="#arenas" data-screen-target="arenas">CAMBIAR ARENA</a></article>
+          <article class="play-rules"><small>REGLAS DEL COMBATE</small><ul><li>Equipo de cinco convergentes.</li><li>Una carta activa.</li><li>Cuatro reservas.</li><li>Poderes habilitados.</li></ul></article>
+          <div class="play"><p id="lobby-team-status">ELIGE 5 PERSONAJES</p><button id="start-convergence-button" type="button" data-action="resume-setup" disabled aria-disabled="true"><span>CONTINUAR</span><small>PREPARAR COMBATE</small></button></div>
+        </aside>
       </div>
     </section>
-
+    <!-- PANTALLA DE MODOS
+         game-modes se rellena desde el array gameModes. -->
     <section class="section screen" id="modos">
       <nav class="setup-progress" aria-label="Progreso de preparación" data-setup-progress></nav>
       <header class="title">
@@ -101,6 +86,12 @@
       </div>
     </section>
 
+    <!-- ==================================================
+         SELECCIÓN DE PERSONAJES
+         ==================================================
+         app.js crea una tarjeta por cada personaje del array.
+         data-character-id identifica la tarjeta pulsada.
+    -->
     <section class="section screen" id="cartas">
       <nav class="setup-progress" aria-label="Progreso de preparación" data-setup-progress></nav>
       <header class="title">
@@ -111,56 +102,56 @@
       </header>
       <div class="card-grid" id="character-grid">
         <article class="card">
-          <div class="art"><img src="assets/reference/luna.jpg" alt="Luna"><em>MARCA · ESTABLE</em></div><small>01 ·
+          <div class="art"><img src="assets/characters/luna.png" alt="Luna"><em>MARCA · ESTABLE</em></div><small>01 ·
             MANIPULADOR</small>
           <h3>LUNA</h3>
           <p>Dreamachine</p>
           <footer>ECOS MENTALES · GUATEMALA</footer>
         </article>
         <article class="card">
-          <div class="art"><img src="assets/reference/axel.jpg" alt="Axel"><em>MÁSCARA · NO OBTENIDA</em></div><small>02
+          <div class="art"><img src="assets/characters/axel.png" alt="Axel"><em>MÁSCARA · NO OBTENIDA</em></div><small>02
             · MANIPULACIÓN</small>
           <h3>AXEL</h3>
           <p>Vector</p>
           <footer>MENSAJERO · EL SALVADOR</footer>
         </article>
         <article class="card picked">
-          <div class="art"><img src="assets/reference/maya.jpg" alt="Maya"><em>MARCA · PALMA IZQUIERDA</em></div>
+          <div class="art"><img src="assets/characters/maya.png" alt="Maya"><em>MARCA · PALMA IZQUIERDA</em></div>
           <small>03 · FIJACIÓN</small>
           <h3>MAYA</h3>
           <p>Ancla</p>
           <footer>ESTUDIANTE · GUATEMALA</footer>
         </article>
         <article class="card">
-          <div class="art"><img src="assets/reference/valeria.jpg" alt="Valeria"><em>MARCA · MUÑECA DERECHA</em></div>
+          <div class="art"><img src="assets/characters/valeria.png" alt="Valeria"><em>MARCA · MUÑECA DERECHA</em></div>
           <small>04 · ALTERACIÓN</small>
           <h3>VALERIA</h3>
           <p>Fricción</p>
           <footer>MECÁNICA · PANAMÁ</footer>
         </article>
         <article class="card">
-          <div class="art"><img src="assets/reference/noah.jpg" alt="Noah"><em>MARCA · CENTRO DEL PECHO</em></div>
+          <div class="art"><img src="assets/characters/noah.png" alt="Noah"><em>MARCA · CENTRO DEL PECHO</em></div>
           <small>05 · ACUMULACIÓN</small>
           <h3>NOAH</h3>
           <p>Depósito</p>
           <footer>COCINERO · HONDURAS</footer>
         </article>
         <article class="card">
-          <div class="art"><img src="assets/reference/sara.jpg" alt="Sara"><em>MARCA · MANO IZQUIERDA</em></div>
+          <div class="art"><img src="assets/characters/sara.png" alt="Sara"><em>MARCA · MANO IZQUIERDA</em></div>
           <small>06 · ENLACE</small>
           <h3>SARA</h3>
           <p>Costura</p>
           <footer>COSTURERA · EL SALVADOR</footer>
         </article>
         <article class="card">
-          <div class="art"><img src="assets/reference/elias.jpg" alt="Elías"><em>MARCA · ÍNDICE DERECHO</em></div>
+          <div class="art"><img src="assets/characters/elias.png" alt="Elías"><em>MARCA · ÍNDICE DERECHO</em></div>
           <small>07 · CONDICIÓN</small>
           <h3>ELÍAS</h3>
           <p>Umbral</p>
           <footer>CERRAJERO · NICARAGUA</footer>
         </article>
         <article class="card">
-          <div class="art p4"><b>CA</b><em>IMAGEN · PENDIENTE</em></div><small>08 · CLASE [PENDIENTE]</small>
+          <div class="art"><img src="assets/characters/camila.png" alt="Camila"><em>RETRATO · PROVISIONAL</em></div><small>08 · CLASE [PENDIENTE]</small>
           <h3>CAMILA</h3>
           <p>Préstamo</p>
           <footer>ARCHIVO INCOMPLETO</footer>
@@ -169,6 +160,7 @@
       <div class="setup-next-action"><p id="character-selection-status">0 / 5</p><button id="continue-characters-button" type="button" disabled aria-disabled="true">CONTINUAR A INICIAL →</button></div>
     </section>
 
+    <!-- FICHA: JavaScript muestra los datos del personaje elegido. -->
     <section class="section screen" id="ficha">
       <header class="title">
         <div><button class="screen-back" type="button" data-screen-target="characters">← VOLVER A CARTAS</button><small id="detail-file-number">EXPEDIENTE 01</small>
@@ -176,7 +168,7 @@
         </div><b id="detail-conviction">CONVICCIÓN · ESTABLE</b>
       </header>
       <div class="sheet" id="character-detail">
-        <div class="sheet-portrait"><img src="assets/reference/maya.jpg"><span>MAYA</span></div>
+        <div class="sheet-portrait"><img src="assets/characters/maya.png"><span>MAYA</span></div>
         <article><small>IDENTIDAD</small>
           <h3>MAYA</h3>
           <p>22 años<br>Guatemala<br>Estudiante de arquitectura / Dibujante técnica</p><small>COMBATE</small>
@@ -201,6 +193,7 @@
       </div>
     </section>
 
+    <!-- EQUIPO: permite elegir quién comienza la batalla. -->
     <section class="section screen" id="equipo">
       <nav class="setup-progress" aria-label="Progreso de preparación" data-setup-progress></nav>
       <header class="title">
@@ -210,12 +203,12 @@
         </div><b id="team-counter">5 / 5</b>
       </header>
       <div class="lineup" id="team-slots">
-        <article class="initial"><img src="assets/reference/maya.jpg"><small>01</small><b>MAYA</b><span>INICIAL</span>
+        <article class="initial"><img src="assets/characters/maya.png"><small>01</small><b>MAYA</b><span>INICIAL</span>
         </article>
-        <article><img src="assets/reference/valeria.jpg"><small>02</small><b>VALERIA</b><span>RESERVA</span></article>
-        <article><img src="assets/reference/noah.jpg"><small>03</small><b>NOAH</b><span>RESERVA</span></article>
-        <article><img src="assets/reference/axel.jpg"><small>04</small><b>AXEL</b><span>RESERVA</span></article>
-        <article><img src="assets/reference/sara.jpg"><small>05</small><b>SARA</b><span>RESERVA</span></article>
+        <article><img src="assets/characters/valeria.png"><small>02</small><b>VALERIA</b><span>RESERVA</span></article>
+        <article><img src="assets/characters/noah.png"><small>03</small><b>NOAH</b><span>RESERVA</span></article>
+        <article><img src="assets/characters/axel.png"><small>04</small><b>AXEL</b><span>RESERVA</span></article>
+        <article><img src="assets/characters/sara.png"><small>05</small><b>SARA</b><span>RESERVA</span></article>
       </div>
       <div class="confirm" id="team-confirmation-panel">
         <p id="confirmation-status"><b>8</b> PARTICIPANTES DISPONIBLES</p><button id="confirm-team-button"
@@ -224,6 +217,7 @@
       </div>
     </section>
 
+    <!-- ARENAS: arena-grid se genera con los objetos de arenas.js. -->
     <section class="section screen" id="arenas">
       <nav class="setup-progress" aria-label="Progreso de preparación" data-setup-progress></nav>
       <header class="title">
@@ -259,19 +253,27 @@
       </div>
     </section>
 
+    <!-- PANTALLA VS: muestra ambos equipos antes del combate. -->
     <section class="section versus screen" id="versus-section"><button class="screen-back" type="button" data-screen-target="lobby">← VOLVER A CONFIGURACIÓN</button><small>COMBATE DE SELECCIÓN · DISTRITO UMBRAL</small>
       <div>
         <article><small>JUGADOR</small>
-          <h2>MAYA</h2><img src="assets/reference/maya.jpg">
+          <h2>MAYA</h2><img src="assets/characters/maya.png">
           <p>RESERVA　02　03　04　05</p>
         </article><strong>1 <b>VS</b> 1<small>4 EN RESERVA POR EQUIPO</small></strong>
         <article><small>MÁQUINA</small>
-          <h2>VALERIA</h2><img src="assets/reference/valeria.jpg">
+          <h2>VALERIA</h2><img src="assets/characters/valeria.png">
           <p>RESERVA　06　10　11　14</p>
         </article>
       </div>
     </section>
 
+    <!-- ==================================================
+         PANTALLA DE COMBATE
+         ==================================================
+         app.js vuelve a renderizar esta zona tras cada acción.
+         El HUD muestra salud y energía; las cartas muestran imagen
+         y nombre; el registro conserva el orden de los eventos.
+    -->
     <section class="battle screen" id="battle-preview">
       <div class="battle-scene"></div>
       <header>
@@ -286,8 +288,8 @@
           <p>◈ ENERGÍA <i></i></p><b>CONVICCIÓN · ESTABLE</b>
         </article>
       </header>
-      <div class="fighters"><img src="assets/reference/maya.jpg">
-        <div></div><img src="assets/reference/valeria.jpg">
+      <div class="fighters"><img src="assets/characters/maya.png">
+        <div></div><img src="assets/characters/valeria.png">
       </div>
       <footer>
         <p>ACTIVA <b>01</b>　 RESERVA <span>02　03　04　05</span></p>
@@ -298,13 +300,14 @@
       </footer>
     </section>
 
+    <!-- RESULTADOS: se activa cuando battleState termina. -->
     <section class="section result screen" id="results-section"><small>REGISTRO DE PARTIDA · PROTOTIPO VISUAL</small>
       <h2>RESULTADO</h2>
       <div class="winner">
         <article><small>GANADORA</small>
           <h3>MAYA</h3>
           <p>CONVICCIÓN FINAL · <b>ESTABLE</b></p>
-        </article><img src="assets/reference/maya.jpg">
+        </article><img src="assets/characters/maya.png">
       </div>
       <div class="result-data">
         <p><small>MODO</small><b>Combate de Selección</b></p>
@@ -316,6 +319,7 @@
       <footer><button>REPETIR</button><button>CAMBIAR EQUIPO</button><button>VOLVER AL LOBBY</button></footer>
     </section>
 
+    <!-- ARCHIVO: muestra el historial guardado en localStorage. -->
     <section class="section screen" id="archivo">
       <header class="title">
         <div><small>REGISTROS INCOMPLETOS</small>
@@ -338,6 +342,7 @@
       </div>
     </section>
 
+    <!-- DIÁLOGO DE AYUDA: JavaScript lo abre con showModal(). -->
     <dialog id="game-tutorial" class="game-tutorial" aria-labelledby="tutorial-title">
       <div class="tutorial-heading"><small>GUÍA RÁPIDA</small><h2 id="tutorial-title">CÓMO JUGAR</h2><button type="button" data-action="close-tutorial" aria-label="Cerrar tutorial">×</button></div>
       <section><h3>1 · PREPARA LA PARTIDA</h3><ol><li>Elige Combate de Selección.</li><li>Forma un equipo de cinco personajes.</li><li>Elige quién comienza y confirma el equipo.</li><li>Selecciona una arena y vuelve al lobby.</li></ol></section>
@@ -346,6 +351,15 @@
       <button class="tutorial-close-button" type="button" data-action="close-tutorial">ENTENDIDO</button>
     </dialog>
   </main>
+  <dialog id="battle-exit-dialog" class="battle-exit-dialog" aria-labelledby="battle-exit-title" aria-describedby="battle-exit-description">
+    <div class="battle-exit-panel">
+      <span class="battle-exit-symbol" aria-hidden="true">!</span>
+      <small>CONFIRMACIÓN DE ABANDONO</small>
+      <h2 id="battle-exit-title">¿DESEAS SALIR DEL COMBATE?</h2>
+      <p id="battle-exit-description">Si sales ahora, perderás el progreso del combate actual.</p>
+      <div><button class="battle-exit-confirm" type="button" data-action="confirm-battle-exit">SÍ, SALIR</button><button class="battle-exit-cancel" type="button" data-action="cancel-battle-exit">NO, CONTINUAR</button></div>
+    </div>
+  </dialog>
   <footer class="site-footer"><span>LA CONVERGENCIA · PROTOTIPO VISUAL UNIVERSITARIO</span><span>HTML + CSS + JAVASCRIPT
       VANILLA</span></footer>
   <script type="module" src="./app.js"></script>

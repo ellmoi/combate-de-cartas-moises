@@ -1,3 +1,20 @@
+// ======================================================
+// PRUEBAS DEL MOTOR DE COMBATE
+// ======================================================
+//
+// Estas pruebas cargan app.js dentro de un contexto aislado y simulan
+// los elementos mínimos del navegador. Así se puede probar el motor
+// con Node sin abrir manualmente la página.
+//
+// Patrón de una prueba:
+// 1. Preparar datos y estado (Arrange).
+// 2. Ejecutar una acción (Act).
+// 3. Comparar el resultado esperado (Assert).
+//
+// assert.equal(actual, esperado) compara valores simples.
+// assert.deepEqual() compara estructuras como arrays y objetos.
+// assert.ok(condición) exige que la condición sea verdadera.
+// Si una comparación falla, Node marca la prueba como fallida.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -68,7 +85,7 @@ function createEngine(options = {}) {
   const testMath = Object.create(Math);
   if (typeof options.random === "function") testMath.random = options.random;
   const context = vm.createContext({ document, console, Math: testMath, Number, Array, Object, localStorage: options.localStorage, confirm: options.confirm, crypto: options.crypto, setTimeout: options.setTimeout });
-  let source = read("app.js").replace(/^import[\s\S]*?from "\.\/js\/config\/ability-prototype\.js";\s*/, "");
+  let source = read("app.js").replace(/^(?:\/\/.*\r?\n|\s)*import[\s\S]*?from "\.\/js\/config\/ability-prototype\.js";\s*/, "");
   source = `const characters = globalThis.__data.characters;
 const gameModes = globalThis.__data.gameModes;
 const arenas = globalThis.__data.arenas;
@@ -89,7 +106,7 @@ globalThis.__engine = {
   getAbility, canUseAbility, spendEnergy, regenerateEnergy,
   getActiveEffects, addEffect, removeEffect, tickEffects, removeEffectsOnSwitch,
   calculateDamage, applyDamage, handleActiveDefeat, allFightersDefeated,
-  beginTurn, startBattle, getValidCpuActions, performCpuTurn,
+  beginTurn, startBattle, getValidCpuActions, performCpuTurn, isBattleActive, requestBattleExit, cancelBattleExit, confirmBattleExit,
   basicAttack, defend, analyzeOpponent, useAbility, switchPlayerCharacter,
   renderEffectBadges, renderResults, replayMatch, returnToTeam, returnToLobby, safePercentage,
   loadMatchHistory, saveMatchHistory, createMatchHistoryEntry, archiveFinishedMatch,
@@ -135,6 +152,24 @@ test("datos y regresión estructural", () => {
   assert.equal(engine.constants.MAX_TEAM_SIZE, 5);
 });
 
+test("salir del combate conserva estado con NO y limpia con SÍ", () => {
+  const { engine, battle } = setupBattle();
+  engine.gameState.currentScreen = "battle";
+  engine.basicAttack();
+  const snapshot = JSON.stringify(battle);
+
+  assert.equal(engine.showScreen("characters"), false);
+  assert.equal(engine.isBattleActive(), true);
+  assert.equal(engine.cancelBattleExit(), true);
+  assert.equal(JSON.stringify(battle), snapshot);
+  assert.equal(engine.gameState.currentScreen, "battle");
+
+  assert.equal(engine.showScreen("team"), false);
+  assert.equal(engine.confirmBattleExit(), true);
+  assert.equal(engine.battleState, null);
+  assert.equal(engine.matchConfig, null);
+  assert.equal(engine.gameState.currentScreen, "lobby");
+});
 test("los 28 personajes tienen una habilidad de ataque jugable", () => {
   characters.forEach((character) => {
     const companions = characters.filter((item) => item.id !== character.id).slice(0, 4).map((item) => item.id);

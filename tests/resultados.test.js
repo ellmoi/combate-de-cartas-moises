@@ -1,3 +1,10 @@
+// ======================================================
+// PRUEBAS DE RESULTADOS
+// ======================================================
+//
+// Comprueban estadísticas, victoria, derrota, repetición y regreso
+// a otras pantallas. El objetivo es asegurar que finalizar una batalla
+// produzca un resumen coherente sin recargar toda la página.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";

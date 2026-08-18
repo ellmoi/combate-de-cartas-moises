@@ -1,3 +1,9 @@
+// ==========================================
+// APLICACIÓN PRINCIPAL
+// Conecta datos, interfaz y motor del juego.
+// ==========================================
+
+// Datos y reglas que necesitamos desde otros módulos.
 import { characters } from "./js/data/characters.js";
 import { gameModes } from "./js/data/game-modes.js";
 import { arenas } from "./js/data/arenas.js";
@@ -6,11 +12,10 @@ import {
   PROTOTYPE_ENERGY_REGEN,
   PROTOTYPE_ABILITY_DEFINITIONS
 } from "./js/config/ability-prototype.js";
-
-// ================================
-// CONFIGURACI?N GENERAL
-// Valores de reglas y tiempos de la interfaz.
-// ================================
+// ==========================================
+// CONFIGURACIÓN GENERAL
+// Reglas y tiempos que no cambian durante la partida.
+// ==========================================
 const MAX_TEAM_SIZE = 5;
 const MAX_MATCH_HISTORY = 50;
 const MAX_BATTLE_LOG_ENTRIES = 40;
@@ -29,36 +34,39 @@ const STAT_LABELS = {
   agility: "Agilidad", technique: "Técnica", control: "Control",
   efficiency: "Eficiencia", power: "Potencia", perception: "Percepción"
 };
-
-// ================================
-// SONIDOS
-// Los archivos son opcionales: si falta uno, el juego contin?a.
-// ================================
-const SOUND_PATHS = {
-  attack: "assets/sounds/attack.mp3", hit: "assets/sounds/hit.mp3",
-  defense: "assets/sounds/defense.mp3", ability: "assets/sounds/ability.mp3",
-  victory: "assets/sounds/victory.mp3", defeat: "assets/sounds/defeat.mp3",
-  click: "assets/sounds/click.mp3"
+// ==========================================
+// AUDIO
+// Música y efectos utilizados por las acciones del juego.
+// ==========================================
+const AUDIO_LIBRARY = {
+  menu: { path: "assets/sounds/menu.mp3", volume: .22, loop: true, available: true },
+  battle: { path: "assets/sounds/battle.mp3", volume: .30, loop: true, available: true },
+  attack: { path: "assets/sounds/attack.mp3", volume: .46, available: true },
+  hit: { path: "assets/sounds/hit.wav", volume: .55, available: true },
+  defense: { path: "assets/sounds/defense.ogg", volume: .46, available: true },
+  ability: { path: "assets/sounds/ability.ogg", volume: .50, available: true },
+  click: { path: "assets/sounds/click.mp3", volume: .30, available: true },
+  victory: { path: "assets/sounds/victory.mp3", volume: .52, available: true },
+  defeat: { path: "assets/sounds/defeat.mp3", volume: .48, available: true }
 };
-const sounds = Object.fromEntries(Object.entries(SOUND_PATHS).map(([name, filePath]) => {
-  const audio = typeof Audio === "function" ? new Audio(filePath) : null;
-  if (audio) audio.preload = "auto";
-  return [name, audio];
-}));
-let soundUnlocked = false;
-
-// Reproduce un sonido desde el principio sin detener el juego si falla.
-function playSound(soundName) {
-  const audio = sounds[soundName];
-  if (!soundUnlocked || !audio) return;
-  audio.currentTime = 0;
-  audio.play().catch(() => {});
+const audioChannels=Object.fromEntries(Object.entries(AUDIO_LIBRARY).map(([name,config])=>{if(!config.available||typeof Audio!=="function")return[name,null];const sound=new Audio(config.path);sound.preload="auto";sound.loop=Boolean(config.loop);sound.volume=config.volume;return[name,sound]}));
+let audioUnlocked=false; let audioEnabled=true; let currentMusic=null;
+function safePlay(sound,restart=false){if(!sound||!audioEnabled||!audioUnlocked)return false;if(restart)sound.currentTime=0;const request=sound.play();request?.catch?.((error)=>console.warn("No se pudo reproducir el audio:",error));return true}
+function stopAudio(sound){if(!sound)return;sound.pause();sound.currentTime=0}
+function playSound(name){return safePlay(audioChannels[name],true)}
+function setMusic(name){if(currentMusic!==name){if(currentMusic)stopAudio(audioChannels[currentMusic]);currentMusic=name}return safePlay(audioChannels[name])}
+function syncMusicForScreen(screenId = gameState?.currentScreen) {
+  if (screenId === "results") return setMusic(null);
+  return setMusic(screenId === "battle" ? "battle" : "menu");
 }
-
-// ================================
+// Los navegadores bloquean autoplay; esperamos la primera interacción.
+function unlockAudio(){if(audioUnlocked)return false;audioUnlocked=true;syncMusicForScreen();return true}
+function toggleAudio(){audioEnabled=!audioEnabled;if(!audioEnabled)Object.values(audioChannels).forEach(stopAudio);else syncMusicForScreen();renderAudioControl();return audioEnabled}
+function renderAudioControl(){const button=document.getElementById("audio-toggle");if(!button)return;const available=Object.values(AUDIO_LIBRARY).some((item)=>item.available);button.disabled=!available;button.setAttribute("aria-pressed",String(!audioEnabled));button.textContent=available?(audioEnabled?"AUDIO · ACTIVO":"AUDIO · SILENCIADO"):"AUDIO · NO DISPONIBLE"}
+// ==========================================
 // ESTADO DEL JUEGO
-// Guarda temporalmente las decisiones del jugador.
-// ================================
+// Guarda la preparación actual: equipo, modo, arena y pantalla.
+// ==========================================
 const gameState = {
   selectedTeamIds: [],
   viewedCharacterId: null,
@@ -69,11 +77,15 @@ const gameState = {
   gameReady: false,
   currentScreen: "lobby"
 };
-
+// Estos valores cambian durante una partida.
+// battleState guarda salud, energía, turno y efectos.
 let matchConfig = null;
 let battleState = null;
 let archiveFilter = "all";
-
+let cpuTurnTimer = null;
+let battleExitModalOpen = false;
+let allowBattleExitNavigation = false;
+// Elementos del HTML que la aplicación actualiza con frecuencia.
 const characterGrid = document.getElementById("character-grid");
 const teamCounter = document.getElementById("team-counter");
 const teamSlots = document.getElementById("team-slots");
@@ -88,6 +100,7 @@ const lobbyCharacterImage = document.getElementById("lobby-character-image");
 const lobbyCharacterName = document.getElementById("lobby-character-name");
 const lobbyTeamCounter = document.getElementById("lobby-team-counter");
 const lobbyTeamSlots = document.getElementById("lobby-team-slots");
+const lobbyAvailableGrid = document.getElementById("lobby-available-grid");
 const lobbyTeamStatus = document.getElementById("lobby-team-status");
 const gameModesContainer = document.getElementById("game-modes");
 const arenaGrid = document.getElementById("arena-grid");
@@ -118,15 +131,22 @@ const SCREEN_IDS = Object.freeze({
   results: "results-section",
   archive: "archivo"
 });
-
-// ================================
-// NAVEGACIÓN ENTRE PANTALLAS
-// ================================
+// ==========================================
+// NAVEGACIÓN
+// Muestra una pantalla y oculta las demás.
+// Recibe: nombre de pantalla y opciones de foco/desplazamiento.
+// ==========================================
 function showScreen(screenId, options = {}) {
   const targetId = SCREEN_IDS[screenId];
   if (!targetId) return false;
   const target = document.getElementById(targetId);
   if (!target) return false;
+  // Durante un combate activo, cualquier navegación se convierte en una
+  // solicitud de salida. El destino solo se abre después de confirmar.
+  if (!allowBattleExitNavigation && gameState.currentScreen === "battle" && screenId !== "battle" && isBattleActive()) {
+    requestBattleExit();
+    return false;
+  }
   Object.entries(SCREEN_IDS).forEach(([name, elementId]) => {
     const screen = document.getElementById(elementId);
     if (!screen) return;
@@ -156,7 +176,7 @@ function showScreen(screenId, options = {}) {
   announce("Pantalla " + screenId.replace("-", " ") + ".");
   return true;
 }
-
+// Busca un personaje por su ID y lo devuelve.
 function findCharacter(characterId) {
   return characters.find((character) => character.id === characterId) ?? null;
 }
@@ -165,6 +185,72 @@ function displayValue(value, fallback = "—") {
   return value === null || value === undefined || value === "" ? fallback : value;
 }
 
+// Un combate está activo mientras conserva su estado temporal y todavía admite
+// turnos o un reemplazo obligatorio. Un resultado terminado ya no se bloquea.
+function isBattleActive() {
+  return Boolean(battleState && (battleState.status === "battle" || battleState.status === "player-must-switch"));
+}
+
+function pauseCpuTurnForExit() {
+  if (cpuTurnTimer !== null && typeof globalThis.clearTimeout === "function") {
+    globalThis.clearTimeout(cpuTurnTimer);
+    cpuTurnTimer = null;
+  }
+}
+
+// Interceptar la salida evita destruir por accidente salud, energía, turno y CPU;
+// por eso mostramos un modal propio antes de ejecutar cualquier navegación.
+function requestBattleExit() {
+  if (!isBattleActive() || battleExitModalOpen) return false;
+  const dialog = document.getElementById("battle-exit-dialog");
+  if (!dialog) return false;
+  battleExitModalOpen = true;
+  pauseCpuTurnForExit();
+  document.body?.classList?.add("battle-exit-open");
+  if (typeof dialog.showModal === "function") dialog.showModal();
+  else dialog.setAttribute("open", "");
+  dialog.querySelector?.('[data-action="cancel-battle-exit"]')?.focus?.();
+  return true;
+}
+
+function resumePausedCpuTurn() {
+  if (battleState?.status !== "battle" || battleState.turn !== "cpu" || !battleState.cpuThinking) return;
+  if (typeof globalThis.setTimeout === "function") cpuTurnTimer = globalThis.setTimeout(completeCpuTurnPresentation, CPU_TURN_DELAY_MS);
+  else completeCpuTurnPresentation();
+}
+
+function cancelBattleExit() {
+  if (!battleExitModalOpen) return false;
+  const dialog = document.getElementById("battle-exit-dialog");
+  if (dialog?.open && typeof dialog.close === "function") dialog.close();
+  else dialog?.removeAttribute?.("open");
+  battleExitModalOpen = false;
+  document.body?.classList?.remove("battle-exit-open");
+  // Elegir NO conserva el estado porque nunca lo destruimos: solo reanudamos
+  // el temporizador de CPU que se pausó al abrir la confirmación.
+  resumePausedCpuTurn();
+  return true;
+}
+
+function confirmBattleExit() {
+  if (!battleExitModalOpen) return false;
+  const dialog = document.getElementById("battle-exit-dialog");
+  if (dialog?.open && typeof dialog.close === "function") dialog.close();
+  else dialog?.removeAttribute?.("open");
+  document.body?.classList?.remove("battle-exit-open");
+  battleExitModalOpen = false;
+  pauseCpuTurnForExit();
+  // Elegir SÍ sí abandona: detenemos audio y limpiamos únicamente el estado
+  // temporal del combate antes de regresar a JUGAR.
+  setMusic(null);
+  battleState = null;
+  matchConfig = null;
+  allowBattleExitNavigation = true;
+  renderApp();
+  showScreen("lobby", { instant: true });
+  allowBattleExitNavigation = false;
+  return true;
+}
 function announce(message) {
   if (!appAnnouncer || !message) return;
   appAnnouncer.textContent = "";
@@ -199,7 +285,7 @@ function invalidatePreparedMatch() {
   matchConfig = null;
   battleState = null;
 }
-
+// Recupera de localStorage la preparación válida del jugador.
 function loadPlayerSetup() {
   try {
     const rawSetup = globalThis.localStorage?.getItem(STORAGE_KEYS.playerSetup);
@@ -274,9 +360,10 @@ function resetPlayerSetup() {
   renderApp();
   return true;
 }
-// ================================
-// PERSONAJES Y SELECCIÓN DEL EQUIPO
-// ================================
+// ==========================================
+// PERSONAJES Y EQUIPO
+// Crea las tarjetas desde el array de personajes.
+// ==========================================
 function renderCharacters() {
   characterGrid.innerHTML = characters.map((character) => {
     const isSelected = gameState.selectedTeamIds.includes(character.id);
@@ -295,7 +382,7 @@ function renderCharacters() {
       </article>`;
   }).join("");
 }
-
+// Añade o retira un personaje sin superar cinco integrantes.
 function toggleCharacterSelection(characterId) {
   if (!findCharacter(characterId)) return;
   const isSelected = gameState.selectedTeamIds.includes(characterId);
@@ -381,46 +468,17 @@ function renderCharacterDetail() {
 function renderLobby() {
   const selectedMode = gameModes.find((mode) => mode.id === gameState.selectedModeId) ?? null;
   const selectedArena = arenas.find((arena) => arena.id === gameState.selectedArenaId) ?? null;
-  const initialCharacter = findCharacter(gameState.initialCharacterId);
-  const reserveCharacters = gameState.selectedTeamIds.filter((id) => id !== gameState.initialCharacterId).map(findCharacter);
-
-  lobbyModeName.textContent = selectedMode ? selectedMode.name.toUpperCase() : "SELECCIONA UN MODO";
-  lobbyModeStatus.textContent = selectedMode ? selectedMode.status : "SIN SELECCIONAR";
-  lobbyModeDescription.textContent = selectedMode ? selectedMode.description : "Selecciona un modo de juego.";
+  lobbyModeName.textContent = selectedMode ? selectedMode.name.toUpperCase() : "VS MÁQUINA";
+  lobbyModeStatus.textContent = selectedMode ? selectedMode.status : "PENDIENTE";
+  lobbyModeDescription.textContent = selectedMode ? selectedMode.description : "Enfréntate a la IA en combates estratégicos.";
   lobbyArenaName.textContent = selectedArena ? selectedArena.location.toUpperCase() : "SELECCIONA UNA ARENA";
-  lobbyArenaStatus.textContent = selectedArena ? selectedArena.number + " / " + String(arenas.length).padStart(2, "0") : "SIN SELECCIONAR";
-  lobbyArenaDescription.textContent = selectedArena ? selectedArena.description : "Selecciona una arena.";
+  lobbyArenaStatus.textContent = selectedArena ? selectedArena.number + " / " + String(arenas.length).padStart(2, "0") : "PENDIENTE";
+  lobbyArenaDescription.textContent = selectedArena ? selectedArena.description : "Elige el escenario del combate.";
   lobbyTeamCounter.textContent = `${gameState.selectedTeamIds.length} / ${MAX_TEAM_SIZE}`;
-  lobbyTeamStatus.textContent = `EQUIPO ${gameState.selectedTeamIds.length}/${MAX_TEAM_SIZE} · ${gameState.teamConfirmed ? "EQUIPO LISTO" : "SIN CONFIRMAR"}`;
-
-  if (initialCharacter) {
-    lobbyFeaturedCharacter.classList.remove("is-empty");
-    lobbyCharacterName.textContent = `INICIAL · ${initialCharacter.name.toUpperCase()}`;
-    if (initialCharacter.image) {
-      lobbyCharacterImage.src = initialCharacter.image;
-      lobbyCharacterImage.alt = initialCharacter.name;
-      lobbyCharacterImage.hidden = false;
-    } else {
-      lobbyCharacterImage.removeAttribute("src");
-      lobbyCharacterImage.alt = "";
-      lobbyCharacterImage.hidden = true;
-    }
-  } else {
-    lobbyFeaturedCharacter.classList.add("is-empty");
-    lobbyCharacterImage.removeAttribute("src");
-    lobbyCharacterImage.alt = "";
-    lobbyCharacterImage.hidden = true;
-    lobbyCharacterName.textContent = "ELIGE UN PERSONAJE INICIAL";
-  }
-
-  lobbyTeamSlots.innerHTML = Array.from({ length: MAX_TEAM_SIZE }, (_, index) => {
-    const character = index === 0 ? initialCharacter : reserveCharacters[index - 1];
-    if (!character) return `<article><span>—</span><b>${String(index + 1).padStart(2, "0")}</b><small>VACÍO</small></article>`;
-    const portrait = character.image ? `<img src="${character.image}" alt="${character.name}">` : `<span>${character.name.slice(0, 2).toUpperCase()}</span>`;
-    return `<article class="${index === 0 ? "active" : ""}">${portrait}<b>${character.number}</b><small>${index === 0 ? "INICIAL" : "RESERVA"}</small></article>`;
-  }).join("");
+  lobbyTeamSlots.innerHTML = Array.from({length:MAX_TEAM_SIZE},(_,index)=>{const character=findCharacter(gameState.selectedTeamIds[index]);if(!character)return `<article class="play-team-empty"><span>+</span><small>RANURA ${index+1}</small></article>`;const portrait=character.image?`<img src="${character.image}" alt="${character.name}">`:`<span>${character.name.slice(0,2).toUpperCase()}</span>`;return `<article class="play-team-member">${portrait}<small>${character.number}</small><b>${character.name.toUpperCase()}</b><em>${character.ability.toUpperCase()}</em><button type="button" data-action="lobby-toggle-character" data-character-id="${character.id}" aria-label="Retirar a ${character.name}">×</button></article>`}).join("");
+  const teamFull=gameState.selectedTeamIds.length===MAX_TEAM_SIZE;
+  lobbyAvailableGrid.innerHTML=characters.filter((character)=>!gameState.selectedTeamIds.includes(character.id)).map((character)=>{const portrait=character.image?`<img src="${character.image}" alt="">`:`<span>${character.name.slice(0,2).toUpperCase()}</span>`;return `<button type="button" class="play-roster-card" data-action="lobby-toggle-character" data-character-id="${character.id}" ${disabledAttributes(teamFull)}>${portrait}<span><b>${character.name.toUpperCase()}</b><small>${character.ability.toUpperCase()}</small></span><strong>+</strong></button>`}).join("")||`<p class="play-roster-complete">EQUIPO COMPLETO · RETIRA UNA CARTA PARA CAMBIARLA</p>`;
 }
-
 function renderGameModes() {
   gameModesContainer.innerHTML = gameModes.map((mode) => {
     const isSelected = gameState.selectedModeId === mode.id;
@@ -442,7 +500,7 @@ function updateGameReady() {
     && gameState.initialCharacterId !== null
     && gameState.teamConfirmed;
 }
-
+// Crea una copia de la preparación que usará el combate.
 function createMatchConfig() {
   return {
     modeId: gameState.selectedModeId,
@@ -451,7 +509,7 @@ function createMatchConfig() {
     initialCharacterId: gameState.initialCharacterId
   };
 }
-
+// Devuelve una copia desordenada sin modificar el array original.
 function shuffleArray(array) {
   const shuffled = [...array];
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
@@ -503,7 +561,10 @@ function recordSwitch(side, countsAsTurn) {
   battleState.stats[side].switches += 1;
   if (countsAsTurn) battleState.stats.totalTurns += 1;
 }
-
+// ==========================================
+// MOTOR DE COMBATE
+// Crea el estado temporal de equipos, turno y estadísticas.
+// ==========================================
 function createBattleState(config) {
   const playerTeamIds = [...config.teamIds];
   const cpuTeamIds = generateCpuTeam(config.initialCharacterId);
@@ -558,7 +619,7 @@ function createFighterState(characterId) {
     activeEffects: []
   };
 }
-
+// Crea el estado individual de cada luchador a partir de sus datos.
 function initializeFighters(teamIds) {
   return Object.fromEntries(teamIds.map((characterId) => [characterId, createFighterState(characterId)]));
 }
@@ -721,7 +782,7 @@ function removeEffectsOnSwitch(side, characterId) {
   fighter.activeEffects = fighter.activeEffects.filter((effect) => !effect.expiresOnSwitch);
   expired.forEach((effect) => addBattleLog(effect.name + " terminó al cambiar de combatiente."));
 }
-
+// Calcula el daño final y los efectos consumidos, sin cambiar salud.
 function calculateDamage(attackerSide, targetSide, baseDamage) {
   const attackerModifier = getActiveEffects(attackerSide)
     .filter((effect) => effect.type === "damage-increase")
@@ -738,12 +799,14 @@ function calculateDamage(attackerSide, targetSide, baseDamage) {
 }
 
 function finishBattle(winner) {
+  pauseCpuTurnForExit();
   battleState.status = "finished";
   battleState.turn = null;
   battleState.winner = winner;
   battleState.switchSelectionOpen = false;
   battleState.cpuThinking = false;
   addBattleLog(winner === "player" ? "VICTORIA: el equipo CPU ha sido derrotado." : "DERROTA: tu equipo ha sido derrotado.");
+  setMusic(null);
   playSound(winner === "player" ? "victory" : "defeat");
   showBattleEffect(winner, "winner", 900);
   archiveFinishedMatch();
@@ -794,7 +857,7 @@ function handleActiveDefeat(side, responsibleSide = side === "player" ? "cpu" : 
   }
   return true;
 }
-
+// Aplica el golpe, actualiza salud y comprueba si alguien fue derrotado.
 function applyDamage(attackerSide, targetSide, baseDamage) {
   const fighter = getFighter(targetSide);
   if (!fighter || fighter.defeated) return 0;
@@ -830,6 +893,7 @@ function beginTurn(side) {
 
 function startBattle() {
   if (!battleState || battleState.status !== "ready") return;
+  pauseCpuTurnForExit();
   battleState.player.fighters = initializeFighters(battleState.player.teamIds);
   battleState.cpu.fighters = initializeFighters(battleState.cpu.teamIds);
   battleState.status = "battle";
@@ -841,10 +905,11 @@ function startBattle() {
   beginTurn("player");
   renderApp();
   showScreen("battle");
+  globalThis.history?.pushState?.({ battleGuard: true }, "", globalThis.location?.href ?? "" );
 }
 
 function canPlayerAct() {
-  return battleState?.status === "battle" && battleState.turn === "player";
+  return !battleExitModalOpen && battleState?.status === "battle" && battleState.turn === "player";
 }
 
 function endCpuTurn() {
@@ -853,7 +918,10 @@ function endCpuTurn() {
   if (battleState.status === "player-must-switch") return;
   beginTurn("player");
 }
-
+// ==========================================
+// TURNO DE LA CPU
+// Decide y ejecuta automáticamente una acción permitida.
+// ==========================================
 function getValidCpuActions() {
   if (!battleState || battleState.status !== "battle" || battleState.turn !== "cpu") return [];
   const actions = [{ type: "attack" }, { type: "defend" }];
@@ -886,6 +954,8 @@ function performCpuTurn() {
 }
 
 function completeCpuTurnPresentation() {
+  cpuTurnTimer = null;
+  if (battleExitModalOpen) return;
   if (!battleState || battleState.status !== "battle" || battleState.turn !== "cpu") return;
   battleState.cpuThinking = false;
   performCpuTurn();
@@ -898,10 +968,13 @@ function endPlayerTurn() {
   battleState.cpuThinking = true;
   renderApp();
   if (typeof globalThis.setTimeout === "function") {
-    globalThis.setTimeout(completeCpuTurnPresentation, CPU_TURN_DELAY_MS);
+    cpuTurnTimer = globalThis.setTimeout(completeCpuTurnPresentation, CPU_TURN_DELAY_MS);
   } else completeCpuTurnPresentation();
 }
-
+// ==========================================
+// ACCIONES DEL JUGADOR
+// Ejecuta el ataque básico y entrega el turno a la CPU.
+// ==========================================
 function basicAttack() {
   if (!canPlayerAct()) return;
   const player = findCharacter(battleState.player.activeCharacterId);
@@ -959,7 +1032,7 @@ function resolveAbilityEffect(side, ability, character) {
   handler({ side, ability, character });
   return true;
 }
-
+// Valida coste y turno, descuenta energía y ejecuta una habilidad.
 function useAbility(side, abilityIndex) {
   const validation = canUseAbility(side, abilityIndex);
   const character = findCharacter(battleState?.[side]?.activeCharacterId);
@@ -1132,7 +1205,7 @@ function renderAbilityButton(abilityIndex, canAct) {
     (enabled ? '' : 'disabled aria-disabled="true"') + ' title="' + reason + '" aria-label="' + ability.name + '. ' + reason + '">' +
     slotLabels[abilityIndex] + '<small>' + ability.name.toUpperCase() + ' · ' + statusText + '</small></button>';
 }
-// Crea una carta de combate sencilla: solo retrato y nombre.
+// Crea un combatiente de escenario: retrato completo y nombre horizontal.
 function renderBattleCharacter(character, side, effectClass) {
   const portrait = character.image
     ? `<img src="${character.image}" alt="${character.name}" style="object-position:${character.imagePosition || "center top"}">`
@@ -1168,14 +1241,14 @@ function renderBattle() {
   const playerEffect = effect?.side === "player" ? ` is-${effect.type}` : "";
   const cpuEffect = effect?.side === "cpu" ? ` is-${effect.type}` : "";
 
-  battlePreview.innerHTML = `<div class="battle-scene"></div>${finishedMessage}<header>${renderHudFighter("player")}<strong>1 <span>VS</span> 1<small>${arena.name.toUpperCase()} · ${arena.location.toUpperCase()}<br>${turnLabel}</small></strong>${renderHudFighter("cpu")}</header><div class="fighters${battleState.lastHitSide ? ` is-hit-${battleState.lastHitSide}` : ""}">${renderBattleCharacter(player, "player", playerEffect)}<div class="versus-mark"></div>${renderBattleCharacter(cpu, "cpu", cpuEffect)}</div>${renderSwitchSelection()}<footer><p>ACTIVA <b>${player.number}</b><span class="battle-reserves">${renderBattleReserves("player")}</span></p><div><button type="button" data-action="basic-attack" ${disabledAttributes(!canAct)}>ATAQUE BÁSICO</button>${renderAbilityButton(0, canAct)}${renderAbilityButton(1, canAct)}${renderAbilityButton(2, canAct)}<button type="button" data-action="defend" ${disabledAttributes(!canAct)}>DEFENDER</button><button type="button" data-action="analyze" ${disabledAttributes(!canAct)}>ANALIZAR</button><button type="button" data-action="open-switch" ${disabledAttributes(!(canAct && getLivingReserveIds("player").length))}>CAMBIAR</button></div><p><span class="battle-reserves">${renderBattleReserves("cpu")}</span><b>${cpu.number}</b> ACTIVA</p></footer>${renderBattleLog()}`;
+  battlePreview.innerHTML = `<div class="battle-scene"></div>${finishedMessage}<header>${renderHudFighter("player")}<strong>1 <span>VS</span> 1<small>${arena.name.toUpperCase()} · ${arena.location.toUpperCase()}<br>${turnLabel}</small></strong>${renderHudFighter("cpu")}</header><div class="fighters${battleState.lastHitSide ? ` is-hit-${battleState.lastHitSide}` : ""}">${renderBattleCharacter(player, "player", playerEffect)}<span class="versus-mark" aria-hidden="true">VS</span>${renderBattleCharacter(cpu, "cpu", cpuEffect)}</div>${renderSwitchSelection()}<footer><p>ACTIVA <b>${player.number}</b><span class="battle-reserves">${renderBattleReserves("player")}</span></p><div><button type="button" data-action="basic-attack" ${disabledAttributes(!canAct)}>ATAQUE BÁSICO</button>${renderAbilityButton(0, canAct)}${renderAbilityButton(1, canAct)}${renderAbilityButton(2, canAct)}<button type="button" data-action="defend" ${disabledAttributes(!canAct)}>DEFENDER</button><button type="button" data-action="analyze" ${disabledAttributes(!canAct)}>ANALIZAR</button><button type="button" data-action="open-switch" ${disabledAttributes(!(canAct && getLivingReserveIds("player").length))}>CAMBIAR</button></div><p><span class="battle-reserves">${renderBattleReserves("cpu")}</span><b>${cpu.number}</b> ACTIVA</p></footer>${renderBattleLog()}`;
   const log = battlePreview.querySelector?.("[data-battle-log]");
   if (log) log.scrollTop = log.scrollHeight;
 }
-// ================================
+// ==========================================
 // ARCHIVO DE PARTIDAS
-// Se guarda en localStorage para conservar el historial del navegador.
-// ================================
+// Conserva el historial terminado en localStorage.
+// ==========================================
 function loadMatchHistory() {
   try {
     const rawHistory = globalThis.localStorage?.getItem(STORAGE_KEYS.matchHistory);
@@ -1478,7 +1551,7 @@ function renderCoreApp() {
   renderResults();
   renderArchive();
 }
-
+// Interpreta los botones que cambian entre pantallas.
 function handleScreenNavigation(event) {
   const trigger = event.target.closest?.("[data-screen-target]");
   if (!trigger) return;
@@ -1508,9 +1581,9 @@ function handleTeamInteraction(event) {
   if (!button) return;
   setInitialCharacter(Number(button.dataset.characterId));
 }
-
+// Dirige cada clic según el atributo data-action del botón.
 document.addEventListener("click", (event) => {
-  soundUnlocked = true;
+  unlockAudio();
   if (event.target.closest?.("button, a, [role='button']") && !event.target.closest?.(".battle")) playSound("click");
   handleScreenNavigation(event);
 });
@@ -1523,7 +1596,7 @@ gameModesContainer.addEventListener("click", handleModeInteraction);
 gameModesContainer.addEventListener("keydown", (event) => handleSelectableKeyboard(event, "[data-mode-id]", selectGameMode));
 arenaGrid.addEventListener("click", handleArenaInteraction);
 arenaGrid.addEventListener("keydown", (event) => handleSelectableKeyboard(event, "[data-arena-id]", selectArena));
-startConvergenceButton.addEventListener("click", prepareMatch);
+startConvergenceButton.addEventListener("click", continueSetup);
 versusSection.addEventListener("click", (event) => {
   if (event.target.closest('[data-action="start-battle"]')) startBattle();
 });
@@ -1647,18 +1720,15 @@ function selectArena(arenaId) {
   return true;
 }
 
+// El CTA sustituye al antiguo texto CONTINUAR PREPARACIÓN y permanece visible.
 function renderStartButton() {
   const step = getNextSetupStep();
-  startConvergenceButton.disabled = false;
-  startConvergenceButton.setAttribute("aria-disabled", "false");
-  startConvergenceButton.textContent = step === "ready" ? "INICIAR COMBATE →" : "CONTINUAR PREPARACIÓN →";
-  lobbyTeamStatus.textContent = getStartValidationMessage();
-  document.querySelectorAll('[data-action="resume-setup"]').forEach((button) => {
-    button.textContent = step === "ready" ? "INICIAR COMBATE →" : "INICIAR CONVERGENCIA →";
-    button.setAttribute("aria-label", step === "ready" ? "Iniciar combate" : "Continuar preparación: " + getStartValidationMessage());
-  });
+  const teamComplete = gameState.selectedTeamIds.length === MAX_TEAM_SIZE;
+  startConvergenceButton.disabled = !teamComplete;
+  startConvergenceButton.setAttribute("aria-disabled", String(!teamComplete));
+  startConvergenceButton.innerHTML = `<span>${step === "ready" ? "INICIAR COMBATE" : "CONTINUAR"}</span><small>${step === "ready" ? "ENTRAR A VERSUS" : "PREPARAR COMBATE"}</small>`;
+  lobbyTeamStatus.textContent = teamComplete ? (step === "ready" ? "CONFIGURACIÓN COMPLETA" : "EQUIPO 5/5 · SIN CONFIRMAR · CONTINÚA") : `SELECCIONA TU EQUIPO · ${gameState.selectedTeamIds.length}/5`;
 }
-
 function renderSetupGuide() {
   const count = gameState.selectedTeamIds.length;
   const status = document.getElementById("character-selection-status");
@@ -1677,7 +1747,7 @@ function renderSetupGuide() {
   }).join("");
   document.querySelectorAll("[data-setup-progress]").forEach((progress) => { progress.innerHTML = markup; });
 }
-
+// Actualiza todas las vistas usando el estado actual.
 function renderApp() {
   renderCoreApp();
   renderSetupGuide();
@@ -1701,10 +1771,35 @@ function closeTutorial() {
 }
 
 document.getElementById("continue-characters-button")?.addEventListener("click", continueFromCharacters);
+document.getElementById("audio-toggle")?.addEventListener("click", toggleAudio);
+["pointerdown", "keydown"].forEach((eventName) => document.addEventListener(eventName, unlockAudio, { once: true }));
+// Dirige cada clic según el atributo data-action del botón.
 document.addEventListener("click", (event) => {
   const action = event.target.closest?.("[data-action]")?.dataset.action;
   if (action === "resume-setup") continueSetup();
   if (action === "open-tutorial") openTutorial();
   if (action === "close-tutorial") closeTutorial();
+  if (action === "confirm-battle-exit") confirmBattleExit();
+  if (action === "cancel-battle-exit") cancelBattleExit();
+  if (action === "lobby-toggle-character") toggleCharacterSelection(Number(event.target.closest("[data-character-id]").dataset.characterId));
 });
 
+
+// Escape se interpreta como un intento de salida, igual que la navegación
+// superior o cualquier botón que cambie de pantalla durante la batalla.
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !isBattleActive()) return;
+  event.preventDefault?.();
+  if (!battleExitModalOpen) requestBattleExit();
+});
+
+document.getElementById("battle-exit-dialog")?.addEventListener("cancel", (event) => {
+  event.preventDefault?.();
+  if (!battleExitModalOpen) requestBattleExit();
+});
+
+globalThis.addEventListener?.("popstate", () => {
+  if (!isBattleActive()) return;
+  globalThis.history?.pushState?.({ battleGuard: true }, "", globalThis.location?.href ?? "");
+  requestBattleExit();
+});

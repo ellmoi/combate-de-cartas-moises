@@ -1,3 +1,11 @@
+// ======================================================
+// PRUEBAS DE CONFIGURACIÓN GUIADA
+// ======================================================
+//
+// Comprueban que el jugador complete modo, equipo, inicial,
+// confirmación y arena en el orden correcto.
+// Algunas pruebas leen el código como texto para verificar que
+// los pasos y controles necesarios continúen presentes.
 import fs from "node:fs";
 import assert from "node:assert/strict";
 

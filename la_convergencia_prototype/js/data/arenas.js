@@ -1,3 +1,7 @@
+// ==========================================
+// ARENAS
+// Escenarios disponibles para crear sus tarjetas.
+// ==========================================
 export const arenas = [
   { id: "city", number: "01", name: "Ciudad", location: "Distrito Umbral", description: "Arquitectura contemporánea bajo una anomalía silenciosa.", className: "city", status: "DISPONIBLE" },
   { id: "jungle", number: "02", name: "Selva", location: "Reserva Latente", description: "Naturaleza activa y rastros antiguos entre la vegetación.", className: "jungle", status: "DISPONIBLE" },

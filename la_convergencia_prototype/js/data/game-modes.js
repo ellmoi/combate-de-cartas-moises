@@ -1,3 +1,7 @@
+// ==========================================
+// MODOS DE JUEGO
+// Opciones que aparecen en la selección de modo.
+// ==========================================
 export const gameModes = [
   {
     id: "selection-combat",

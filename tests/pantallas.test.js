@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { createEngine, setupBattle, characters, arenas } from "./phase6-engine.test.js";
+import { createEngine, setupBattle, characters, arenas } from "./combate.test.js";
 
 const workspace = path.resolve(__dirname, "..");
 const root = path.join(workspace, "la_convergencia_prototype");

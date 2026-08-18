@@ -1,5 +1,5 @@
 /*
- * Configuración técnica temporal de la Fase 6.
+ * Configuración temporal de habilidades para la primera entrega.
  * Estos valores permiten probar el motor y NO forman parte del lore ni de los
  * datos oficiales de characters.js. Requieren balance y aprobación posteriores.
  */

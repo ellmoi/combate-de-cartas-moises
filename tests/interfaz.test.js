@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { createEngine, arenas } from "./phase6-engine.test.js";
+import { createEngine, arenas } from "./combate.test.js";
 
 const root = path.resolve(__dirname, "..", "la_convergencia_prototype");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
@@ -95,6 +95,6 @@ for (const { name, fn } of tests) {
   try { fn(); console.log(`✓ ${name}`); }
   catch (error) { failed += 1; console.error(`✗ ${name}\n  ${error.message}`); }
 }
-console.log(`\nFase 10: ${tests.length - failed}/${tests.length} pruebas superadas.`);
+console.log(`\nINTERFAZ: ${tests.length - failed}/${tests.length} pruebas superadas.`);
 if (failed) process.exitCode = 1;
 

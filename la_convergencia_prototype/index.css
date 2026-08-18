@@ -1560,7 +1560,7 @@ img {
 .archive-match summary{color:var(--amber);font:600 .65rem var(--display);cursor:pointer}
 .archive-empty{grid-column:1/-1;padding:3rem 1rem;text-align:center;border:1px solid rgba(202,169,107,.25);color:var(--muted);font:600 .8rem var(--display);letter-spacing:.1em}
 @media(max-width:800px){.archive-summary{grid-template-columns:repeat(2,1fr)}.archive-history{grid-template-columns:1fr}.archive-toolbar{align-items:stretch;flex-direction:column}.archive-toolbar div{flex-wrap:wrap}}
-/* Fase 10: UX, accesibilidad y respuesta */
+/* ACCESIBILIDAD Y RESPUESTA DE LA INTERFAZ */
 html{scroll-behavior:smooth;scroll-padding-top:5.5rem}
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 :where(a,button,[role="button"],summary):focus-visible{outline:3px solid #f2c66d;outline-offset:3px}

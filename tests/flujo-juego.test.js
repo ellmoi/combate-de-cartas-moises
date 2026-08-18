@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { createEngine, arenas } from "./phase6-engine.test.js";
+import { createEngine, arenas } from "./combate.test.js";
 
 const appSource = fs.readFileSync(path.resolve(__dirname, "..", "la_convergencia_prototype", "app.js"), "utf8");
 const tests = [];

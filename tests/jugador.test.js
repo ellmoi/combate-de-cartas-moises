@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { createEngine, arenas } from "./phase6-engine.test.js";
+import { createEngine, arenas } from "./combate.test.js";
 
 const PLAYER_SETUP_KEY = "laConvergencia.playerSetup";
 const MATCH_HISTORY_KEY = "laConvergencia.matchHistory";
@@ -235,5 +235,5 @@ for (const { name, fn } of tests) {
     console.error(error.stack);
   }
 }
-console.log(`\nRESULTADO FASE 9: ${passed}/${tests.length} pruebas superadas`);
+console.log(`\nJUGADOR: ${passed}/${tests.length} pruebas superadas`);
 if (passed !== tests.length) process.exitCode = 1;

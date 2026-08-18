@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { createEngine, arenas } from "./phase6-engine.test.js";
+import { createEngine, arenas } from "./combate.test.js";
 
 const app = fs.readFileSync(path.resolve(__dirname, "..", "la_convergencia_prototype", "app.js"), "utf8");
 const css = fs.readFileSync(path.resolve(__dirname, "..", "la_convergencia_prototype", "index.css"), "utf8");
@@ -191,5 +191,5 @@ for (const item of tests) {
   try { item.fn(); console.log("PASS " + item.name); }
   catch (error) { failed += 1; console.error("FAIL " + item.name + "\n" + error.stack); }
 }
-console.log("\nVS Y SUSTITUCIONES: " + (tests.length - failed) + "/" + tests.length + " pruebas superadas");
+console.log("\nREEMPLAZOS: " + (tests.length - failed) + "/" + tests.length + " pruebas superadas");
 if (failed) process.exitCode = 1;

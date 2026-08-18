@@ -4,7 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { createEngine, setupBattle, characters, arenas } from "./phase6-engine.test.js";
+import { createEngine, setupBattle, characters, arenas } from "./combate.test.js";
 
 const tests = [];
 function test(name, fn) { tests.push({ name, fn }); }
@@ -207,5 +207,5 @@ for (const { name, fn } of tests) {
     console.error(error.stack);
   }
 }
-console.log(`\nRESULTADO FASE 7: ${passed}/${tests.length} pruebas superadas`);
+console.log(`\nRESULTADOS: ${passed}/${tests.length} pruebas superadas`);
 if (passed !== tests.length) process.exitCode = 1;

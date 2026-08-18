@@ -64,5 +64,5 @@ for (const item of tests) {
   try { item.fn(); console.log("PASS " + item.name); }
   catch (error) { failed += 1; console.error("FAIL " + item.name + "\n" + error.stack); }
 }
-console.log("\nFLUJO GUIADO: " + (tests.length - failed) + "/" + tests.length + " pruebas superadas");
+console.log("\nCONFIGURACIÓN: " + (tests.length - failed) + "/" + tests.length + " pruebas superadas");
 if (failed) process.exitCode = 1;

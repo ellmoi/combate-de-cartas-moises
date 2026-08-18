@@ -197,7 +197,7 @@ test("energía: consumo, límites, rechazo y regeneración activa", () => {
   assert.equal(reserve.currentEnergy, reserveEnergy);
 });
 
-test("habilidad provisional causa dano y rechaza falta de energia", () => {
+test("habilidad provisional causa daño y rechaza falta de energía", () => {
   const mayaBattle = setupBattle({ playerActive: 3 });
   const maya = mayaBattle.engine.getFighter("player");
   const target = mayaBattle.engine.getFighter("cpu");
@@ -343,7 +343,7 @@ test("Camila usa fallback seguro y no produce NaN ni undefined", () => {
   assert.ok(!JSON.stringify(battle).includes("null") || Number.isFinite(camila.currentHealth));
 });
 
-function runPhase6Tests() {
+function runCombatTests() {
   let passed = 0;
   for (const { name, fn } of tests) {
     try {
@@ -360,9 +360,9 @@ function runPhase6Tests() {
   return { passed, total: tests.length };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) runPhase6Tests();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) runCombatTests();
 
-export { createEngine, setupBattle, characters, gameModes, arenas, runPhase6Tests };
+export { createEngine, setupBattle, characters, gameModes, arenas, runCombatTests };
 
 
 

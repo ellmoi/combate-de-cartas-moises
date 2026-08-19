@@ -1,8 +1,7 @@
-/*
- * Configuración temporal de habilidades para la primera entrega.
- * Estos valores permiten probar el motor y NO forman parte del lore ni de los
- * datos oficiales de characters.js. Requieren balance y aprobación posteriores.
- */
+// ==========================================
+// REGLAS DE HABILIDADES
+// Costes y efectos que utiliza el motor de combate.
+// ==========================================
 export const PROTOTYPE_ABILITY_COSTS = {
   standard: 15,
   advanced: 25,

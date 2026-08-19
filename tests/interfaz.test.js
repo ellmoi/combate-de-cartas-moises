@@ -1,3 +1,10 @@
+// ======================================================
+// PRUEBAS DE INTERFAZ Y ACCESIBILIDAD
+// ======================================================
+//
+// Verifican atributos ARIA, foco de teclado, mensajes de validación
+// y reglas responsive. No juzgan el aspecto artístico; comprueban
+// que los elementos necesarios existan y comuniquen su estado.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";

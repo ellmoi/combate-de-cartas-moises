@@ -1,3 +1,10 @@
+// ======================================================
+// PRUEBAS DEL FLUJO COMPLETO
+// ======================================================
+//
+// Simulan clics reales sobre controles visibles: preparar partida,
+// comenzar batalla, atacar, defender, cambiar y llegar al resultado.
+// Esto comprueba la conexión entre eventos, estado y renderizado.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";

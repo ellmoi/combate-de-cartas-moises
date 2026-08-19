@@ -1,3 +1,10 @@
+// ======================================================
+// PRUEBAS DE CONFIGURACIÓN DEL JUGADOR
+// ======================================================
+//
+// Comprueban la carga, limpieza y guardado de las selecciones.
+// También prueban datos inválidos para confirmar que el juego los
+// descarta sin romper la sesión actual.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";

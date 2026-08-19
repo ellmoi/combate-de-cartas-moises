@@ -1,3 +1,10 @@
+// ======================================================
+// PRUEBAS DE PANTALLAS Y ESTRUCTURA
+// ======================================================
+//
+// Comprueban navegación, ids únicos, rutas de imágenes, UTF-8 y
+// estilos esenciales. También verifican que solo una pantalla quede
+// activa y que cambiar de vista no destruya la batalla.
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -144,10 +151,10 @@ test("todos los retratos oficiales referidos existen", () => {
   });
 });
 
-test("Camila conserva placeholder sin imagen inventada", () => {
-  const camila = characters.find((character) => character.name === "Camila");
-  assert.equal(camila.image, null);
-  assert.match(app, /character\.image[\s\S]*detail-placeholder/);
+test("los 28 personajes usan retratos separados desde la fuente única", () => {
+  assert.equal(characters.every((character) => character.image?.startsWith("assets/characters/")), true);
+  assert.equal(new Set(characters.map((character) => character.image)).size, 28);
+  assert.doesNotMatch(app, /IMAGEN PENDIENTE|DATOS PROVISIONALES/);
 });
 
 test("los dos fondos auditados existen y hero es el fondo activo", () => {
@@ -166,6 +173,23 @@ test("cada contexto visual define object-fit sin deformación", () => {
 test("archivos activos son UTF-8 válido", () => {
   const decoder = new TextDecoder("utf-8", { fatal: true });
   ["index.html", "index.css", "app.js", "js/data/characters.js", "js/data/game-modes.js", "js/data/arenas.js"].forEach((name) => decoder.decode(fs.readFileSync(path.join(root, name))));
+});
+
+test("usuario e historial tienen controles integrados", () => {
+  assert.match(html, /id="player-dialog"/);
+  assert.match(html, /id="player-name-input"[^>]*minlength="2"[^>]*maxlength="20"/);
+  assert.match(html, /data-action="change-player"/);
+  assert.match(app, /data-action="download-history"/);
+});
+
+test("los nueve audios locales existen y las acciones los utilizan", () => {
+  const sounds = ["menu-sector.mp3", "battle.mp3", "attack.ogg", "hit.ogg", "ability.ogg", "defense.ogg", "victory.mp3", "defeat.ogg", "click.mp3"];
+  sounds.forEach((name) => assert.equal(fs.existsSync(path.join(root, "assets/sounds", name)), true, name));
+  assert.equal(app.includes('playSound("attack")'), true);
+  assert.equal(app.includes('playSound("defense")'), true);
+  assert.equal(app.includes('playSound("hit")'), true);
+  assert.equal(app.includes('playSound("ability")'), true);
+  assert.doesNotMatch(app, /assets\/sounds\/(?:menu\.mp3|attack\.mp3|hit\.wav|defeat\.mp3)/);
 });
 
 test("la entrega no conserva respaldos ni informes residuales", () => {

@@ -23,6 +23,8 @@ const STORAGE_KEYS = {
   matchHistory: "laConvergencia.matchHistory",
   playerSetup: "laConvergencia.playerSetup",
   playerName: "convergenciaUsuario",
+  users: "laConvergencia.users",
+  activeUserId: "laConvergencia.activeUserId",
   audioEnabled: "laConvergencia.audioEnabled"
 };
 const BASIC_ATTACK_DAMAGE = 10;
@@ -71,7 +73,14 @@ function loadAudioPreference() {
 function safePlay(sound, restart = false) {
   if (!sound || !audioEnabled || !audioUnlocked || document.hidden) return false;
   if (restart) sound.currentTime = 0;
-  sound.play()?.catch?.((error) => console.warn("No se pudo reproducir el audio:", error));
+  sound.muted = false;
+  const playback = sound.play();
+  playback?.catch?.((error) => {
+    // Si el navegador aun no acepto la interaccion, dejamos que el
+    // siguiente clic vuelva a intentar el desbloqueo en lugar de rendirnos.
+    if (error?.name === "NotAllowedError") audioUnlocked = false;
+    console.warn("No se pudo reproducir el audio:", error);
+  });
   return true;
 }
 function stopAudio(sound) { if (!sound) return; sound.pause(); sound.currentTime = 0; }
@@ -92,17 +101,16 @@ function setMusic(name, afterChange) {
   if (musicFadeTimer !== null) globalThis.clearInterval?.(musicFadeTimer);
   if (!previous || typeof globalThis.setInterval !== "function") { startNext(); return true; }
   musicFadeTimer = globalThis.setInterval(() => {
-    previous.volume = Math.max(0, previous.volume - .05);
+    previous.volume = Math.max(0, previous.volume - .025);
     if (previous.volume > 0) return;
     globalThis.clearInterval(musicFadeTimer);
     musicFadeTimer = null;
     startNext();
-  }, 35);
+  }, 50);
   return true;
 }
-function syncMusicForScreen(screenId = gameState?.currentScreen) {
-  if (screenId === "results") return setMusic(null);
-  return setMusic(screenId === "battle" ? "battle" : "menu");
+function syncMusicForScreen(screenId = gameState?.currentScreen, afterChange) {
+  return setMusic(screenId === "battle" ? "battle" : "menu", afterChange);
 }
 // El navegador permite audio después de la primera interacción.
 function unlockAudio() { if (audioUnlocked) return false; audioUnlocked = true; syncMusicForScreen(); return true; }
@@ -141,7 +149,9 @@ let archiveFilter = "all";
 let cpuTurnTimer = null;
 let battleExitModalOpen = false;
 let allowBattleExitNavigation = false;
-let currentPlayerName = loadPlayerName();
+let users = loadUsers();
+let activeUserId = loadActiveUserId(users);
+let currentPlayerName = getActiveUser()?.username ?? "";
 let playerDialogMode = "identify";
 // Elementos del HTML que la aplicación actualiza con frecuencia.
 const characterGrid = document.getElementById("character-grid");
@@ -175,6 +185,7 @@ const resultsSection = document.getElementById("results-section");
 const teamSection = document.getElementById("equipo");
 const lobbySection = document.getElementById("lobby");
 const archiveContent = document.getElementById("archive-content");
+const rankingContent = document.getElementById("ranking-content");
 const appAnnouncer = document.getElementById("app-announcer");
 const primaryNavigation = document.getElementById("primary-navigation");
 const SCREEN_IDS = Object.freeze({
@@ -187,20 +198,75 @@ const SCREEN_IDS = Object.freeze({
   versus: "versus-section",
   battle: "battle-preview",
   results: "results-section",
-  archive: "archivo"
+  archive: "archivo",
+  ranking: "ranking"
 });
+function normalizeUsername(name) {
+  return String(name ?? "").trim().replace(/\s+/g, " ");
+}
+function loadUsers() {
+  try {
+    const parsed = JSON.parse(globalThis.localStorage?.getItem(STORAGE_KEYS.users) ?? "[]");
+    if (!Array.isArray(parsed)) return [];
+    const seenIds = new Set();
+    const seenNames = new Set();
+    return parsed.filter((user) => {
+      const name = normalizeUsername(user?.username);
+      const key = name.toLocaleLowerCase("es");
+      if (!user?.id || !/^[a-zA-Z0-9_-]+$/.test(String(user.id)) || name.length < 2 || name.length > 20 || seenIds.has(String(user.id)) || seenNames.has(key)) return false;
+      user.id = String(user.id); user.username = name; seenIds.add(user.id); seenNames.add(key); return true;
+    }).map((user) => ({ id: user.id, username: user.username, createdAt: user.createdAt || new Date().toISOString() }));
+  } catch { return []; }
+}
+function saveUsers(nextUsers = users) {
+  try { globalThis.localStorage?.setItem(STORAGE_KEYS.users, JSON.stringify(nextUsers)); return true; } catch { return false; }
+}
+function loadActiveUserId(knownUsers = users) {
+  try {
+    const storedId = globalThis.localStorage?.getItem(STORAGE_KEYS.activeUserId);
+    if (knownUsers.some((user) => user.id === storedId)) return storedId;
+    const legacyName = loadPlayerName();
+    return knownUsers.find((user) => user.username.toLocaleLowerCase("es") === legacyName.toLocaleLowerCase("es"))?.id ?? knownUsers[0]?.id ?? null;
+  } catch { return knownUsers[0]?.id ?? null; }
+}
+function getActiveUser() { return users.find((user) => user.id === activeUserId) ?? null; }
+function createLocalUserId() {
+  try { if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID(); } catch {}
+  return "user-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+}
+function createUser(name) {
+  const username = normalizeUsername(name);
+  if (username.length < 2 || username.length > 20) return null;
+  if (users.some((user) => user.username.toLocaleLowerCase("es") === username.toLocaleLowerCase("es"))) return null;
+  const user = { id: createLocalUserId(), username, createdAt: new Date().toISOString() };
+  users.push(user);
+  if (!saveUsers()) { users.pop(); return null; }
+  selectUser(user.id);
+  return user;
+}
+function selectUser(userId) {
+  const user = users.find((item) => item.id === userId);
+  if (!user) return false;
+  activeUserId = user.id;
+  currentPlayerName = user.username;
+  try {
+    globalThis.localStorage?.setItem(STORAGE_KEYS.activeUserId, activeUserId);
+    globalThis.localStorage?.setItem(STORAGE_KEYS.playerName, currentPlayerName);
+  } catch {}
+  archiveFilter = "all";
+  renderPlayerProfile(); renderArchive(); renderRanking(); renderUserList();
+  announce("Usuario activo: " + currentPlayerName + ".");
+  return true;
+}
 // Recupera el nombre guardado en el navegador.
 function loadPlayerName() {
   try { return globalThis.localStorage?.getItem(STORAGE_KEYS.playerName)?.trim() ?? ""; } catch { return ""; }
 }
 function savePlayerName(name) {
-  const cleanName = String(name ?? "").trim();
+  const cleanName = normalizeUsername(name);
   if (cleanName.length < 2 || cleanName.length > 20) return false;
-  try { globalThis.localStorage?.setItem(STORAGE_KEYS.playerName, cleanName); } catch { return false; }
-  currentPlayerName = cleanName;
-  renderPlayerProfile();
-  renderArchive();
-  return true;
+  const existing = users.find((user) => user.username.toLocaleLowerCase("es") === cleanName.toLocaleLowerCase("es"));
+  return Boolean(existing ? selectUser(existing.id) : createUser(cleanName));
 }
 function renderPlayerProfile() {
   const display = document.getElementById("player-name-display");
@@ -213,11 +279,21 @@ function requestPlayerName(changePlayer = false) {
   playerDialogMode = changePlayer ? "change" : "identify";
   document.getElementById("player-dialog-title").textContent = changePlayer ? "CAMBIAR JUGADOR" : "IDENTIFÍCATE, CONVERGENTE";
   dialog.querySelector?.('[data-action="cancel-player"]')?.toggleAttribute("hidden", !changePlayer);
-  input.value = changePlayer ? currentPlayerName : "";
+  input.value = "";
+  renderUserList();
   document.getElementById("player-name-error").textContent = "";
   if (typeof dialog.showModal === "function") dialog.showModal(); else dialog.setAttribute("open", "");
   input.focus?.();
   return true;
+}
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>]/g, (character) => character === "&" ? "&amp;" : character === "<" ? "&lt;" : "&gt;");
+}
+function renderUserList() {
+  const list = document.getElementById("user-list");
+  if (!list) return;
+  list.hidden = !users.length;
+  list.innerHTML = users.map((user) => `<button type="button" data-action="select-user" data-user-id="${user.id}" class="${user.id === activeUserId ? "is-active" : ""}" aria-pressed="${user.id === activeUserId}"><span>${escapeHtml(user.username)}</span>${user.id === activeUserId ? "<small>ACTIVO</small>" : ""}</button>`).join("");
 }
 function submitPlayerName(event) {
   event.preventDefault?.();
@@ -225,7 +301,9 @@ function submitPlayerName(event) {
   const name = input?.value.trim() ?? "";
   const error = document.getElementById("player-name-error");
   if (name.length < 2 || name.length > 20) { error.textContent = "USA ENTRE 2 Y 20 CARACTERES."; return false; }
-  if (!savePlayerName(name)) { error.textContent = "NO SE PUDO GUARDAR EL NOMBRE."; return false; }
+  const duplicate = users.some((user) => user.username.toLocaleLowerCase("es") === normalizeUsername(name).toLocaleLowerCase("es"));
+  if (duplicate) { error.textContent = "ESE USUARIO YA EXISTE. SELECCIÓNALO EN LA LISTA."; return false; }
+  if (!savePlayerName(name)) { error.textContent = "NO SE PUDO GUARDAR EL USUARIO."; return false; }
   document.getElementById("player-dialog")?.close?.();
   announce("Jugador " + name + " identificado.");
   return true;
@@ -257,6 +335,9 @@ function showScreen(screenId, options = {}) {
     screen.setAttribute("aria-hidden", String(!active));
   });
   gameState.currentScreen = screenId;
+  // La pantalla refleja el estado real: batalla usa su pista y todas las
+  // demas vistas comparten una sola musica ambiental continua.
+  syncMusicForScreen(screenId, options.afterMusicChange);
   if (document.body?.dataset) document.body.dataset.currentScreen = screenId;
   const links = primaryNavigation?.querySelectorAll?.("[data-screen-target]") ?? [];
   links.forEach((link) => {
@@ -343,7 +424,6 @@ function confirmBattleExit() {
   // Elegir SÍ sí abandona: detenemos audio y limpiamos únicamente el estado
   // temporal del combate antes de regresar a JUGAR.
   archiveAbandonedMatch();
-  setMusic(null);
   battleState = null;
   matchConfig = null;
   allowBattleExitNavigation = true;
@@ -673,6 +753,8 @@ function createBattleState(config) {
 
   return {
     status: "ready",
+    userId: activeUserId,
+    playerName: getActiveUser()?.username ?? currentPlayerName,
     modeId: config.modeId,
     arenaId: config.arenaId,
     turn: null,
@@ -907,10 +989,9 @@ function finishBattle(winner) {
   battleState.switchSelectionOpen = false;
   battleState.cpuThinking = false;
   addBattleLog(winner === "player" ? "VICTORIA: el equipo CPU ha sido derrotado." : "DERROTA: tu equipo ha sido derrotado.");
-  setMusic(null, () => playSound(winner === "player" ? "victory" : "defeat"));
   showBattleEffect(winner, "winner", 900);
   archiveFinishedMatch();
-  showScreen("results");
+  showScreen("results", { afterMusicChange: () => playSound(winner === "player" ? "victory" : "defeat") });
 }
 
 function allFightersDefeated(side) {
@@ -1341,7 +1422,7 @@ function renderBattle() {
   const playerEffect = effect?.side === "player" ? ` is-${effect.type}` : "";
   const cpuEffect = effect?.side === "cpu" ? ` is-${effect.type}` : "";
 
-  battlePreview.innerHTML = `<div class="battle-scene"></div>${finishedMessage}<header>${renderHudFighter("player")}<strong>1 <span>VS</span> 1<small>${arena.name.toUpperCase()} · ${arena.location.toUpperCase()}<br>${turnLabel}</small></strong>${renderHudFighter("cpu")}</header><div class="fighters${battleState.lastHitSide ? ` is-hit-${battleState.lastHitSide}` : ""}">${renderBattleCharacter(player, "player", playerEffect)}<span class="versus-mark" aria-hidden="true">VS</span>${renderBattleCharacter(cpu, "cpu", cpuEffect)}</div>${renderSwitchSelection()}<footer><p>ACTIVA <b>${player.number}</b><span class="battle-reserves">${renderBattleReserves("player")}</span></p><div><button type="button" data-action="basic-attack" ${disabledAttributes(!canAct)}>ATAQUE BÁSICO</button>${renderAbilityButton(0, canAct)}${renderAbilityButton(1, canAct)}${renderAbilityButton(2, canAct)}<button type="button" data-action="defend" ${disabledAttributes(!canAct)}>DEFENDER</button><button type="button" data-action="analyze" ${disabledAttributes(!canAct)}>ANALIZAR</button><button type="button" data-action="open-switch" ${disabledAttributes(!(canAct && getLivingReserveIds("player").length))}>CAMBIAR</button></div><p><span class="battle-reserves">${renderBattleReserves("cpu")}</span><b>${cpu.number}</b> ACTIVA</p></footer>${renderBattleLog()}`;
+  battlePreview.innerHTML = `<div class="battle-scene"></div><p class="battle-user">JUGADOR · ${escapeHtml(battleState.playerName)}</p>${finishedMessage}<header>${renderHudFighter("player")}<strong>1 <span>VS</span> 1<small>${arena.name.toUpperCase()} · ${arena.location.toUpperCase()}<br>${turnLabel}</small></strong>${renderHudFighter("cpu")}</header><div class="fighters${battleState.lastHitSide ? ` is-hit-${battleState.lastHitSide}` : ""}">${renderBattleCharacter(player, "player", playerEffect)}<span class="versus-mark" aria-hidden="true">VS</span>${renderBattleCharacter(cpu, "cpu", cpuEffect)}</div>${renderSwitchSelection()}<footer><p>ACTIVA <b>${player.number}</b><span class="battle-reserves">${renderBattleReserves("player")}</span></p><div><button type="button" data-action="basic-attack" ${disabledAttributes(!canAct)}>ATAQUE BÁSICO</button>${renderAbilityButton(0, canAct)}${renderAbilityButton(1, canAct)}${renderAbilityButton(2, canAct)}<button type="button" data-action="defend" ${disabledAttributes(!canAct)}>DEFENDER</button><button type="button" data-action="analyze" ${disabledAttributes(!canAct)}>ANALIZAR</button><button type="button" data-action="open-switch" ${disabledAttributes(!(canAct && getLivingReserveIds("player").length))}>CAMBIAR</button></div><p><span class="battle-reserves">${renderBattleReserves("cpu")}</span><b>${cpu.number}</b> ACTIVA</p></footer>${renderBattleLog()}`;
   const log = battlePreview.querySelector?.("[data-battle-log]");
   if (log) log.scrollTop = log.scrollHeight;
 }
@@ -1363,7 +1444,9 @@ function loadMatchHistory() {
 function saveMatchHistory(history) {
   try {
     if (!globalThis.localStorage || !Array.isArray(history)) return false;
-    globalThis.localStorage.setItem(STORAGE_KEYS.matchHistory, JSON.stringify(history.slice(-MAX_MATCH_HISTORY)));
+    const seenIds = new Set();
+    const uniqueHistory = history.filter((entry) => !entry?.id || !seenIds.has(entry.id)).filter((entry) => { if (entry?.id) seenIds.add(entry.id); return true; });
+    globalThis.localStorage.setItem(STORAGE_KEYS.matchHistory, JSON.stringify(uniqueHistory));
     return true;
   } catch {
     return false;
@@ -1397,7 +1480,8 @@ function createMatchHistoryEntry(result = battleState?.winner) {
   if (!battleState || !validResult) return null;
   return {
     id: createLocalMatchId(),
-    playerName: currentPlayerName || "SIN IDENTIFICAR",
+    userId: battleState.userId,
+    playerName: battleState.playerName,
     completedAt: new Date().toISOString(),
     modeId: battleState.modeId,
     arenaId: battleState.arenaId,
@@ -1437,8 +1521,30 @@ function archiveAbandonedMatch() {
 
 // Mostramos solamente las batallas del jugador actual.
 function getCurrentPlayerHistory(history = loadMatchHistory()) {
-  if (!currentPlayerName) return history;
-  return history.filter((entry) => entry?.playerName === currentPlayerName);
+  return getUserBattles(activeUserId, history);
+}
+
+function getUserBattles(userId, history = loadMatchHistory()) {
+  if (!userId) return [];
+  const user = users.find((item) => item.id === userId);
+  return history.filter((entry) => entry?.userId === userId || (!entry?.userId && user && entry?.playerName === user.username));
+}
+
+function getUserStats(userId, history = loadMatchHistory()) {
+  const resolved = getUserBattles(userId, history).filter((entry) => entry?.winner === "player" || entry?.winner === "cpu");
+  const wins = resolved.filter((entry) => entry.winner === "player").length;
+  const losses = resolved.length - wins;
+  return { battles: resolved.length, wins, losses, winRate: resolved.length ? Math.round((wins / resolved.length) * 10000) / 100 : 0 };
+}
+
+function getGlobalRanking(history = loadMatchHistory()) {
+  return users.map((user) => ({ ...user, ...getUserStats(user.id, history) })).sort((a, b) => b.wins - a.wins || b.winRate - a.winRate || b.battles - a.battles || a.username.localeCompare(b.username, "es"));
+}
+
+function renderRanking() {
+  if (!rankingContent) return;
+  const ranking = getGlobalRanking();
+  rankingContent.innerHTML = ranking.length ? ranking.map((user, index) => `<article class="ranking-entry ${user.id === activeUserId ? "is-active" : ""}"><b class="ranking-position">${index + 1}</b><div><small>${user.id === activeUserId ? "USUARIO ACTIVO" : "CONVERGENTE"}</small><h3>${escapeHtml(user.username)}</h3></div><p><span>BATALLAS <b>${user.battles}</b></span><span>VICTORIAS <b>${user.wins}</b></span><span>DERROTAS <b>${user.losses}</b></span><span>VICTORIAS <b>${user.winRate.toFixed(1)}%</b></span></p></article>`).join("") : `<div class="archive-empty">AÚN NO HAY USUARIOS REGISTRADOS</div>`;
 }
 
 function getArchiveSummary(history) {
@@ -1506,10 +1612,9 @@ function clearMatchHistory() {
   const confirmed = typeof globalThis.confirm === "function" ? globalThis.confirm("¿Borrar el historial de " + (currentPlayerName || "este jugador") + "?") : false;
   if (!confirmed) return false;
   const history = loadMatchHistory();
-  const hasNamedHistory = history.some((entry) => entry?.playerName);
-  if (!currentPlayerName || !hasNamedHistory) {
-    try { globalThis.localStorage?.removeItem(STORAGE_KEYS.matchHistory); } catch {}
-  } else saveMatchHistory(history.filter((entry) => entry?.playerName !== currentPlayerName));
+  const remaining = history.filter((entry) => entry?.userId !== activeUserId && !(!entry?.userId && entry?.playerName === currentPlayerName));
+  if (remaining.length) saveMatchHistory(remaining);
+  else try { globalThis.localStorage?.removeItem(STORAGE_KEYS.matchHistory); } catch {}
   archiveFilter = "all";
   renderArchive();
   return true;
@@ -1528,6 +1633,33 @@ function downloadPlayerHistory() {
   link.href = url; link.download = "historial-la-convergencia.json"; link.click();
   globalThis.URL.revokeObjectURL(url);
   return true;
+}
+function migrateLegacyUserData() {
+  const history = loadMatchHistory();
+  const legacyNames = [loadPlayerName(), ...history.map((entry) => entry?.playerName)].map(normalizeUsername).filter((name) => name.length >= 2 && name.length <= 20);
+  let usersChanged = false;
+  legacyNames.forEach((username) => {
+    if (users.some((user) => user.username.toLocaleLowerCase("es") === username.toLocaleLowerCase("es"))) return;
+    users.push({ id: createLocalUserId(), username, createdAt: new Date().toISOString() });
+    usersChanged = true;
+  });
+  if (usersChanged) saveUsers();
+  if (!users.some((user) => user.id === activeUserId)) activeUserId = loadActiveUserId(users);
+  currentPlayerName = getActiveUser()?.username ?? "";
+  if (activeUserId) {
+    try {
+      globalThis.localStorage?.setItem(STORAGE_KEYS.activeUserId, activeUserId);
+      globalThis.localStorage?.setItem(STORAGE_KEYS.playerName, currentPlayerName);
+    } catch {}
+  }
+  let historyChanged = false;
+  history.forEach((entry) => {
+    if (entry?.userId && users.some((user) => user.id === entry.userId)) return;
+    const owner = users.find((user) => user.username === normalizeUsername(entry?.playerName));
+    if (owner) { entry.userId = owner.id; historyChanged = true; }
+  });
+  if (historyChanged) saveMatchHistory(history);
+  return { usersChanged, historyChanged };
 }
 function renderFinalTeam(side) {
   const team = battleState[side];
@@ -1667,7 +1799,9 @@ function renderCoreApp() {
   renderBattle();
   renderResults();
   renderArchive();
+  renderRanking();
   renderPlayerProfile();
+  renderUserList();
 }
 // Interpreta los botones que cambian entre pantallas.
 function handleScreenNavigation(event) {
@@ -1745,6 +1879,7 @@ if (action.dataset.action === "defend") defend();
 // INICIALIZACIÓN
 // Recupera la configuración guardada y abre el lobby.
 // ================================
+migrateLegacyUserData();
 restorePlayerSetup();
 renderApp();
 showScreen("lobby", { focus: false, instant: true });
@@ -1893,7 +2028,7 @@ function closeTutorial() {
 document.getElementById("continue-characters-button")?.addEventListener("click", continueFromCharacters);
 document.getElementById("player-form")?.addEventListener("submit", submitPlayerName);
 document.getElementById("audio-toggle")?.addEventListener("click", toggleAudio);
-["pointerdown", "keydown"].forEach((eventName) => document.addEventListener(eventName, unlockAudio, { once: true }));
+["pointerdown", "keydown"].forEach((eventName) => document.addEventListener(eventName, unlockAudio));
 // Dirige cada clic según el atributo data-action del botón.
 document.addEventListener("click", (event) => {
   const action = event.target.closest?.("[data-action]")?.dataset.action;
@@ -1901,6 +2036,10 @@ document.addEventListener("click", (event) => {
   if (action === "open-tutorial") openTutorial();
   if (action === "close-tutorial") closeTutorial();
   if (action === "change-player") requestPlayerName(true);
+  if (action === "select-user") {
+    const userId = event.target.closest?.("[data-user-id]")?.dataset.userId;
+    if (selectUser(userId)) document.getElementById("player-dialog")?.close?.();
+  }
   if (action === "cancel-player") document.getElementById("player-dialog")?.close?.();
   if (action === "confirm-battle-exit") confirmBattleExit();
   if (action === "cancel-battle-exit") cancelBattleExit();

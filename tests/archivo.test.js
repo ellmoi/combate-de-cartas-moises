@@ -213,21 +213,21 @@ test("resumen deriva partidas, victorias, derrotas y porcentaje", () => {
   assert.deepEqual({ ...summary }, { matches: 3, victories: 2, defeats: 1, abandoned: 0, winPercentage: 67 });
 });
 
-test("máximo 50 conserva registros más recientes", () => {
+test("el historial global conserva todos los registros", () => {
   const seeded = Array.from({ length: 50 }, (_, index) => ({ id: `old-${index}`, winner: "player" }));
   const storage = new MemoryStorage({ [STORAGE_KEY]: JSON.stringify(seeded) });
   const { engine } = finishedBattle(storage, "cpu");
   assert.equal(engine.archiveFinishedMatch(), true);
   const history = JSON.parse(storage.getItem(STORAGE_KEY));
-  assert.equal(history.length, 50);
-  assert.equal(history.some((entry) => entry.id === "old-0"), false);
-  assert.equal(history[0].id, "old-1");
-  assert.equal(history[49].winner, "cpu");
+  assert.equal(history.length, 51);
+  assert.equal(history.some((entry) => entry.id === "old-0"), true);
+  assert.equal(history[0].id, "old-0");
+  assert.equal(history[50].winner, "cpu");
 });
 
 test("datos incompletos renderizan fallback sin undefined ni NaN", () => {
-  const incomplete = [{ id: "legacy", completedAt: "invalid", winner: "player", modeId: "missing", arenaId: "missing", player: { teamIds: [999], initialCharacterId: 999 }, cpu: {} }];
-  const storage = new MemoryStorage({ [STORAGE_KEY]: JSON.stringify(incomplete) });
+  const incomplete = [{ id: "legacy", playerName: "Pruebas", completedAt: "invalid", winner: "player", modeId: "missing", arenaId: "missing", player: { teamIds: [999], initialCharacterId: 999 }, cpu: {} }];
+  const storage = new MemoryStorage({ convergenciaUsuario: "Pruebas", [STORAGE_KEY]: JSON.stringify(incomplete) });
   const engine = createEngine({ localStorage: storage });
   engine.renderArchive();
   const html = engine.elements.get("archive-content").innerHTML;
@@ -238,10 +238,10 @@ test("datos incompletos renderizan fallback sin undefined ni NaN", () => {
 
 test("filtros muestran todas, victorias o derrotas", () => {
   const history = [
-    { id: "win", completedAt: new Date().toISOString(), winner: "player" },
-    { id: "loss", completedAt: new Date().toISOString(), winner: "cpu" }
+    { id: "win", playerName: "Pruebas", completedAt: new Date().toISOString(), winner: "player" },
+    { id: "loss", playerName: "Pruebas", completedAt: new Date().toISOString(), winner: "cpu" }
   ];
-  const engine = createEngine({ localStorage: new MemoryStorage({ [STORAGE_KEY]: JSON.stringify(history) }) });
+  const engine = createEngine({ localStorage: new MemoryStorage({ convergenciaUsuario: "Pruebas", [STORAGE_KEY]: JSON.stringify(history) }) });
   assert.equal(engine.setArchiveFilter("player"), true);
   let html = engine.elements.get("archive-content").innerHTML;
   assert.match(html, /data-match-id="win"/);
@@ -285,6 +285,56 @@ test("solo historial usa la clave estable", () => {
   assert.match(app, /matchHistory:\s*"laConvergencia\.matchHistory"/);
   assert.equal((app.match(/localStorage/g) || []).length >= 3, true);
   assert.doesNotMatch(app, /JSON\.stringify\(battleState\)/);
+});
+
+test("usuarios persistentes rechazan duplicados y cambiar activo conserva el juego", () => {
+  const storage = new MemoryStorage();
+  const engine = createEngine({ localStorage: storage });
+  const moi = engine.createUser("Moi");
+  const pedro = engine.createUser("Pedro");
+  assert.ok(moi?.id);
+  assert.ok(pedro?.id);
+  assert.equal(engine.createUser(" moi "), null);
+  engine.gameState.selectedTeamIds.push(1, 2, 3);
+  engine.gameState.currentScreen = "lobby";
+  assert.equal(engine.selectUser(moi.id), true);
+  assert.deepEqual(Array.from(engine.gameState.selectedTeamIds), [1, 2, 3]);
+  assert.equal(engine.gameState.currentScreen, "lobby");
+  assert.equal(JSON.parse(storage.getItem("laConvergencia.users")).length, 2);
+  assert.equal(storage.getItem("laConvergencia.activeUserId"), moi.id);
+});
+
+test("ranking usa historiales reales y ordena por victorias, porcentaje y partidas", () => {
+  const users = [
+    { id: "moi", username: "Moi", createdAt: "2026-01-01" },
+    { id: "pedro", username: "Pedro", createdAt: "2026-01-02" },
+    { id: "laura", username: "Laura", createdAt: "2026-01-03" }
+  ];
+  const history = [
+    { id: "1", userId: "moi", winner: "player" }, { id: "2", userId: "moi", winner: "player" }, { id: "3", userId: "moi", winner: "cpu" },
+    { id: "4", userId: "pedro", winner: "player" }, { id: "5", userId: "pedro", winner: "player" }, { id: "6", userId: "pedro", winner: "cpu" }, { id: "7", userId: "pedro", winner: "cpu" },
+    { id: "8", userId: "laura", winner: "player" }, { id: "9", userId: "laura", winner: "abandoned" }
+  ];
+  const storage = new MemoryStorage({ "laConvergencia.users": JSON.stringify(users), "laConvergencia.activeUserId": "moi", [STORAGE_KEY]: JSON.stringify(history) });
+  const engine = createEngine({ localStorage: storage });
+  const ranking = engine.getGlobalRanking();
+  assert.deepEqual(Array.from(ranking, (user) => user.id), ["moi", "pedro", "laura"]);
+  assert.deepEqual({ ...engine.getUserStats("moi") }, { battles: 3, wins: 2, losses: 1, winRate: 66.67 });
+  assert.deepEqual({ ...engine.getUserStats("laura") }, { battles: 1, wins: 1, losses: 0, winRate: 100 });
+});
+
+test("una batalla conserva el usuario inicial aunque cambie el usuario activo", () => {
+  const users = [{ id: "moi", username: "Moi" }, { id: "pedro", username: "Pedro" }];
+  const storage = new MemoryStorage({ "laConvergencia.users": JSON.stringify(users), "laConvergencia.activeUserId": "moi" });
+  const { engine, battle } = setupBattle({}, { localStorage: storage });
+  assert.equal(battle.userId, "moi");
+  engine.selectUser("pedro");
+  battle.status = "finished";
+  battle.winner = "player";
+  assert.equal(engine.archiveFinishedMatch(), true);
+  const entry = JSON.parse(storage.getItem(STORAGE_KEY))[0];
+  assert.equal(entry.userId, "moi");
+  assert.equal(entry.playerName, "Moi");
 });
 
 let passed = 0;

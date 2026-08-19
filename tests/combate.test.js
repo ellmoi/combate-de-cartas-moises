@@ -100,6 +100,8 @@ globalThis.__engine = {
   get battleState() { return battleState; },
   set battleState(value) { battleState = value; },
   get currentPlayerName() { return currentPlayerName; },
+  get users() { return users; },
+  get activeUserId() { return activeUserId; },
   createMatchConfig, createBattleState, createFighterState, initializeFighters,
   toggleCharacterSelection, setInitialCharacter, confirmTeam, selectGameMode, selectArena, updateGameReady, viewCharacter, prepareMatch, finishBattle,
   announce, showScreen, scrollToSection, getTeamValidationMessage, getStartValidationMessage, renderConfirmation, renderStartButton, renderBattle,
@@ -111,6 +113,7 @@ globalThis.__engine = {
   basicAttack, defend, analyzeOpponent, useAbility, switchPlayerCharacter,
   renderEffectBadges, renderResults, replayMatch, returnToTeam, returnToLobby, safePercentage,
   loadMatchHistory, saveMatchHistory, createMatchHistoryEntry, archiveFinishedMatch, archiveAbandonedMatch, getCurrentPlayerHistory,
+  loadUsers, saveUsers, createUser, selectUser, getActiveUser, getUserBattles, getUserStats, getGlobalRanking, migrateLegacyUserData,
   getArchiveSummary, renderArchive, setArchiveFilter, clearMatchHistory, createHistoryExport, downloadPlayerHistory,
   resolveCharacterName, resolveArenaName, resolveModeName, formatArchiveDate,
   loadPlayerSetup, savePlayerSetup, restorePlayerSetup, resetPlayerSetup, loadPlayerName, savePlayerName
@@ -399,9 +402,6 @@ function runCombatTests() {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) runCombatTests();
 
 export { createEngine, setupBattle, characters, gameModes, arenas, runCombatTests };
-
-
-
 
 
 

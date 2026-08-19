@@ -15,7 +15,7 @@
   <header class="topbar"><a class="brand" href="#lobby" data-screen-target="lobby"><i></i><span><b>LA CONVERGENCIA</b><small>PROTOCOLO
           CENTROAMÉRICA</small></span></a>
     <nav id="primary-navigation" aria-label="Navegación principal"><a href="#lobby" data-screen-target="lobby">JUGAR</a><a href="#cartas" data-screen-target="characters">CARTAS</a><a href="#equipo" data-screen-target="team">EQUIPO</a><a href="#modos" data-screen-target="modes">MODOS</a><a
-        href="#arenas" data-screen-target="arenas">ARENAS</a><a href="#archivo" data-screen-target="archive">HISTORIAL</a></nav>
+        href="#arenas" data-screen-target="arenas">ARENAS</a><a href="#archivo" data-screen-target="archive">HISTORIAL</a><a href="#ranking" data-screen-target="ranking">RANKING</a></nav>
     <div class="player-profile"><small>JUGADOR</small><b id="player-name-display">SIN IDENTIFICAR</b><button type="button" data-action="change-player">CAMBIAR</button></div><button id="audio-toggle" class="audio-toggle" type="button" aria-pressed="false" title="Activar o silenciar música y efectos">SONIDO ON</button>
   </header>
   <!-- Cada sección representa una pantalla que JavaScript muestra u oculta. -->
@@ -342,6 +342,13 @@
       </div>
     </section>
 
+    <section class="section screen" id="ranking">
+      <header class="title">
+        <div><small>REGISTRO GLOBAL DE CONVERGENTES</small><h2>RANKING</h2></div><b>CLASIFICACIÓN</b>
+      </header>
+      <div class="ranking" id="ranking-content"></div>
+    </section>
+
     <!-- DIÁLOGO DE AYUDA: JavaScript lo abre con showModal(). -->
     <dialog id="game-tutorial" class="game-tutorial" aria-labelledby="tutorial-title">
       <div class="tutorial-heading"><small>GUÍA RÁPIDA</small><h2 id="tutorial-title">CÓMO JUGAR</h2><button type="button" data-action="close-tutorial" aria-label="Cerrar tutorial">×</button></div>
@@ -356,6 +363,7 @@
     <form id="player-form" method="dialog" novalidate>
       <small>PROTOCOLO DE ACCESO</small>
       <h2 id="player-dialog-title">IDENTIFÍCATE, CONVERGENTE</h2>
+      <div id="user-list" class="user-list" aria-label="Usuarios registrados"></div>
       <label for="player-name-input">NOMBRE</label>
       <input id="player-name-input" name="playerName" type="text" minlength="2" maxlength="20" autocomplete="nickname" required>
       <p id="player-name-error" class="player-name-error" role="alert"></p>
